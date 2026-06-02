@@ -19,8 +19,8 @@ preprocessing:
 threshold_segmentation:
   color_space: "HSV"  # HSV, Lab, RGB
   hsv_range:
-    lower: [100, 50, 50]   # H, S, V 下限
-    upper: [140, 255, 255] # H, S, V 上限
+    lower: [100, 120, 60]  # H, S, V 下限 (收紧范围，提高饱和度要求)
+    upper: [120, 255, 180] # H, S, V 上限
   lab_range:
     lower: [0, 0, -128]    # L, a, b 下限（蓝色在b通道为负）
     upper: [100, 127, -20] # L, a, b 上限
@@ -41,7 +41,7 @@ watershed:
 # 面孔率计算参数
 area_calculation:
   pixel_scale: null  # μm/pixel，null时从比例尺自动识别
-  min_pore_area: 50  # 最小孔隙面积（像素），过滤噪点
+  min_pore_area: 500  # 最小孔隙面积（像素），过滤噪点
   max_pore_area: null  # 最大孔隙面积，null表示不限制
 
 # 输出参数
