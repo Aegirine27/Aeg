@@ -30,26 +30,33 @@ def load_image(path, flag=cv2.IMREAD_COLOR):
         - Pillow后备: .tif, .tiff, .gif(首帧), .ico, .pcx, .psd等
     """
     path_str = str(path)
+    path_obj = Path(path_str)
+
+    # 检查文件是否存在
+    if not path_obj.exists():
+        raise FileNotFoundError(f"文件不存在: {path_str}")
 
     # 首先尝试OpenCV加载
-    image = cv2.imread(path_str, flag)
+    image = cv2.imread(str(path_obj.resolve()), flag)
     if image is not None:
         return image
 
     # OpenCV失败，尝试Pillow加载并转换
+    # 使用文件对象打开，避免路径解析问题
     try:
-        pil_image = Image.open(path_str)
+        with open(path_obj, 'rb') as f:
+            pil_image = Image.open(f)
 
-        # 处理多帧图像（如GIF），只取第一帧
-        if hasattr(pil_image, 'n_frames') and pil_image.n_frames > 1:
-            pil_image.seek(0)
+            # 处理多帧图像（如GIF），只取第一帧
+            if hasattr(pil_image, 'n_frames') and pil_image.n_frames > 1:
+                pil_image.seek(0)
 
-        # 转换为RGB模式
-        if pil_image.mode != 'RGB':
-            pil_image = pil_image.convert('RGB')
+            # 转换为RGB模式
+            if pil_image.mode != 'RGB':
+                pil_image = pil_image.convert('RGB')
 
-        # PIL Image -> numpy array (RGB)
-        image = np.array(pil_image)
+            # PIL Image -> numpy array (RGB)
+            image = np.array(pil_image)
 
         # RGB -> BGR (OpenCV格式)
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
@@ -57,11 +64,12 @@ def load_image(path, flag=cv2.IMREAD_COLOR):
         return image
 
     except Exception as e:
-        ext = Path(path_str).suffix.lower()
+        ext = path_obj.suffix.lower()
         supported = '.jpg, .jpeg, .png, .bmp, .tif, .tiff, .webp, .gif'
         raise FileNotFoundError(
-            f"无法加载图像: {path}\n"
+            f"无法加载图像: {path_str}\n"
             f"格式: {ext}\n"
+            f"文件大小: {path_obj.stat().st_size / 1024:.1f} KB\n"
             f"支持的格式: {supported}\n"
             f"错误: {e}"
         )

@@ -593,13 +593,7 @@ class PorosityGUI:
             path = filedialog.askopenfilename(
                 title="选择显微镜照片",
                 filetypes=[
-                    ("所有图像", "*.jpg *.jpeg *.JPG *.JPEG *.png *.PNG *.bmp *.BMP *.tif *.tiff *.TIF *.TIFF *.webp *.WEBP *.gif *.GIF"),
-                    ("JPEG", "*.jpg *.jpeg *.JPG *.JPEG"),
-                    ("PNG", "*.png *.PNG"),
-                    ("BMP", "*.bmp *.BMP"),
-                    ("TIFF", "*.tif *.tiff *.TIF *.TIFF"),
-                    ("WebP", "*.webp *.WEBP"),
-                    ("GIF", "*.gif *.GIF"),
+                    ("所有图像", "*.jpg *.jpeg *.png *.bmp *.tif *.tiff *.webp *.gif"),
                     ("所有文件", "*.*")
                 ]
             )
