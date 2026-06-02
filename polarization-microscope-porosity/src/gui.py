@@ -592,8 +592,16 @@ class PorosityGUI:
         if self.mode_var.get() == 'single':
             path = filedialog.askopenfilename(
                 title="选择显微镜照片",
-                filetypes=[("图像文件", "*.jpg *.jpeg *.tif *.tiff *.png *.bmp"),
-                           ("所有文件", "*.*")]
+                filetypes=[
+                    ("所有图像", "*.jpg *.jpeg *.JPG *.JPEG *.png *.PNG *.bmp *.BMP *.tif *.tiff *.TIF *.TIFF *.webp *.WEBP *.gif *.GIF"),
+                    ("JPEG", "*.jpg *.jpeg *.JPG *.JPEG"),
+                    ("PNG", "*.png *.PNG"),
+                    ("BMP", "*.bmp *.BMP"),
+                    ("TIFF", "*.tif *.tiff *.TIF *.TIFF"),
+                    ("WebP", "*.webp *.WEBP"),
+                    ("GIF", "*.gif *.GIF"),
+                    ("所有文件", "*.*")
+                ]
             )
         else:
             path = filedialog.askdirectory(title="选择照片文件夹")
@@ -701,8 +709,8 @@ class PorosityGUI:
         output_dir = input_dir / 'results'
         use_watershed = self.watershed_var.get()
 
-        # 收集图像
-        extensions = {'.jpg', '.jpeg', '.tif', '.tiff', '.png', '.bmp'}
+        # 收集图像（支持所有常见格式，大小写不敏感）
+        extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff', '.webp', '.gif'}
         image_files = [f for f in input_dir.iterdir()
                        if f.is_file() and f.suffix.lower() in extensions]
 
