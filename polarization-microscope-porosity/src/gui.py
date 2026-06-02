@@ -116,10 +116,35 @@ class PorosityGUI:
         self.status_bar.pack(fill='x', side='bottom')
 
     def _build_left_panel(self, parent):
-        """构建左侧面板"""
-        left_frame = tk.Frame(parent, bg=COLORS['bg_panel'], width=300)
-        left_frame.pack(side='left', fill='y', padx=(0, 10))
-        left_frame.pack_propagate(False)
+        """构建左侧面板（带滚动条）"""
+        # 外层容器固定宽度
+        left_container = tk.Frame(parent, bg=COLORS['bg_panel'], width=300)
+        left_container.pack(side='left', fill='y', padx=(0, 10))
+        left_container.pack_propagate(False)
+
+        # Canvas + Scrollbar 实现滚动
+        canvas = tk.Canvas(left_container, bg=COLORS['bg_panel'], highlightthickness=0)
+        scrollbar = tk.Scrollbar(left_container, orient='vertical', command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        scrollbar.pack(side='right', fill='y')
+        canvas.pack(side='left', fill='both', expand=True)
+
+        # 内部Frame放置所有控件
+        left_frame = tk.Frame(canvas, bg=COLORS['bg_panel'], width=280)
+        canvas.create_window((0, 0), window=left_frame, anchor='nw', width=280)
+
+        # 绑定鼠标滚轮
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), 'units')
+        canvas.bind_all('<MouseWheel>', _on_mousewheel)
+
+        # 内容变化时更新滚动区域
+        def _configure_canvas(event):
+            canvas.configure(scrollregion=canvas.bbox('all'))
+        left_frame.bind('<Configure>', _configure_canvas)
+
+        self.left_canvas = canvas  # 保存引用
 
         # --- 输入选择区 ---
         input_frame = tk.LabelFrame(left_frame, text=" 输入选择 ",
