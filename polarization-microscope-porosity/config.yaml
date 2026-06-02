@@ -1,0 +1,54 @@
+# 偏光显微镜面孔率识别配置文件
+
+# 图像预处理参数
+preprocessing:
+  denoise:
+    method: "bilateral"  # bilateral, median, gaussian
+    d: 9
+    sigma_color: 75
+    sigma_space: 75
+  illumination_correction:
+    enabled: true
+    kernel_size: 51  # 必须是奇数
+  contrast_enhancement:
+    enabled: true
+    clip_limit: 2.0
+    tile_grid_size: [8, 8]
+
+# 颜色阈值分割参数（蓝色树脂）
+threshold_segmentation:
+  color_space: "HSV"  # HSV, Lab, RGB
+  hsv_range:
+    lower: [100, 50, 50]   # H, S, V 下限
+    upper: [140, 255, 255] # H, S, V 上限
+  lab_range:
+    lower: [0, 0, -128]    # L, a, b 下限（蓝色在b通道为负）
+    upper: [100, 127, -20] # L, a, b 上限
+  morphological_operations:
+    open_kernel: [3, 3]
+    close_kernel: [5, 5]
+    iterations: 2
+
+# 分水岭算法参数
+watershed:
+  distance_transform:
+    kernel_size: 5
+  marker_threshold:
+    min_distance: 10
+  border_clearing:
+    enabled: true
+
+# 面孔率计算参数
+area_calculation:
+  pixel_scale: null  # μm/pixel，null时从比例尺自动识别
+  min_pore_area: 50  # 最小孔隙面积（像素），过滤噪点
+  max_pore_area: null  # 最大孔隙面积，null表示不限制
+
+# 输出参数
+output:
+  annotated_image:
+    pore_color: [255, 0, 0]      # BGR纯蓝色
+    background_color: [255, 255, 255]  # BGR纯白色
+    crack_color: [255, 0, 0]     # 裂缝同样用蓝色
+  save_intermediate: true  # 是否保存中间结果
+  result_format: "csv"     # csv, json, excel
