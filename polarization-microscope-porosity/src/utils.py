@@ -64,14 +64,17 @@ def load_image(path, flag=cv2.IMREAD_COLOR):
         return image
 
     except Exception as e:
+        import traceback
         ext = path_obj.suffix.lower()
         supported = '.jpg, .jpeg, .png, .bmp, .tif, .tiff, .webp, .gif'
+        tb_str = traceback.format_exc()
         raise FileNotFoundError(
             f"无法加载图像: {path_str}\n"
             f"格式: {ext}\n"
             f"文件大小: {path_obj.stat().st_size / 1024:.1f} KB\n"
             f"支持的格式: {supported}\n"
-            f"错误: {e}"
+            f"错误: {e}\n"
+            f"堆栈:\n{tb_str[-500:]}"  # 只显示最后500字符
         )
 
 

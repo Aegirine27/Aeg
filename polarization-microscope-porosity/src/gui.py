@@ -590,13 +590,19 @@ class PorosityGUI:
     def _select_file(self):
         """选择文件或文件夹"""
         if self.mode_var.get() == 'single':
-            path = filedialog.askopenfilename(
-                title="选择显微镜照片",
-                filetypes=[
-                    ("所有图像", "*.jpg *.jpeg *.png *.bmp *.tif *.tiff *.webp *.gif"),
-                    ("所有文件", "*.*")
-                ]
-            )
+            # 简化文件对话框，避免某些tkinter版本的兼容性问题
+            try:
+                path = filedialog.askopenfilename(
+                    title="选择显微镜照片",
+                    filetypes=[("所有文件", "*.*")]
+                )
+            except Exception as e:
+                messagebox.showerror("对话框错误", f"文件对话框出错:\n{e}\n\n尝试使用简化对话框...")
+                try:
+                    path = filedialog.askopenfilename()
+                except Exception as e2:
+                    messagebox.showerror("对话框错误", f"简化对话框也出错:\n{e2}")
+                    return
         else:
             path = filedialog.askdirectory(title="选择照片文件夹")
 
