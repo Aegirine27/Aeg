@@ -175,25 +175,32 @@ class PorosityGUI:
 
         # 下限
         lower = self.config.get('threshold_segmentation', {}).get('hsv_range', {}).get('lower', [100, 50, 50])
-        self.h_lower = ParameterSlider(thresh_frame, label="H 下限", from_=0, to=180, default=lower[0])
+        self.h_lower = ParameterSlider(thresh_frame, label="H下限(色相)", from_=0, to=180, default=lower[0],
+                                        command=lambda v: self._on_param_changed())
         self.h_lower.pack(fill='x', pady=2)
-        self.s_lower = ParameterSlider(thresh_frame, label="S 下限", from_=0, to=255, default=lower[1])
+        self.s_lower = ParameterSlider(thresh_frame, label="S下限(饱和度)", from_=0, to=255, default=lower[1],
+                                        command=lambda v: self._on_param_changed())
         self.s_lower.pack(fill='x', pady=2)
-        self.v_lower = ParameterSlider(thresh_frame, label="V 下限", from_=0, to=255, default=lower[2])
+        self.v_lower = ParameterSlider(thresh_frame, label="V下限(亮度)", from_=0, to=255, default=lower[2],
+                                        command=lambda v: self._on_param_changed())
         self.v_lower.pack(fill='x', pady=2)
 
         # 上限
         upper = self.config.get('threshold_segmentation', {}).get('hsv_range', {}).get('upper', [140, 255, 255])
-        self.h_upper = ParameterSlider(thresh_frame, label="H 上限", from_=0, to=180, default=upper[0])
+        self.h_upper = ParameterSlider(thresh_frame, label="H上限(色相)", from_=0, to=180, default=upper[0],
+                                        command=lambda v: self._on_param_changed())
         self.h_upper.pack(fill='x', pady=2)
-        self.s_upper = ParameterSlider(thresh_frame, label="S 上限", from_=0, to=255, default=upper[1])
+        self.s_upper = ParameterSlider(thresh_frame, label="S上限(饱和度)", from_=0, to=255, default=upper[1],
+                                        command=lambda v: self._on_param_changed())
         self.s_upper.pack(fill='x', pady=2)
-        self.v_upper = ParameterSlider(thresh_frame, label="V 上限", from_=0, to=255, default=upper[2])
+        self.v_upper = ParameterSlider(thresh_frame, label="V上限(亮度)", from_=0, to=255, default=upper[2],
+                                        command=lambda v: self._on_param_changed())
         self.v_upper.pack(fill='x', pady=2)
 
         # 最小孔隙面积
         min_area = self.config.get('area_calculation', {}).get('min_pore_area', 50)
-        self.min_area_slider = ParameterSlider(param_frame, label="最小孔隙面积", from_=0, to=500, default=min_area)
+        self.min_area_slider = ParameterSlider(param_frame, label="最小孔隙面积", from_=0, to=500, default=min_area,
+                                                command=lambda v: self._on_param_changed())
         self.min_area_slider.pack(fill='x', pady=(5, 0))
 
         # --- 操作按钮区 ---
@@ -251,12 +258,29 @@ class PorosityGUI:
         tk.Label(pick_frame, text="Step 3: 调整容差", bg=COLORS['bg_panel'],
                  fg=COLORS['text'], font=('Microsoft YaHei', 9, 'bold')).pack(anchor='w', pady=(5, 0))
 
-        self.h_tol = ParameterSlider(pick_frame, label="H 容差", from_=1, to=30, default=10)
+        # H容差：色相范围，控制颜色偏蓝还是偏绿/紫
+        self.h_tol = ParameterSlider(pick_frame, label="H容差(色相)", from_=1, to=30, default=10,
+                                     command=lambda v: self._on_param_changed())
         self.h_tol.pack(fill='x', pady=1)
-        self.s_tol = ParameterSlider(pick_frame, label="S 容差", from_=10, to=100, default=40)
+        tk.Label(pick_frame, text="  色相范围：越大包含越多蓝绿色",
+                 bg=COLORS['bg_panel'], fg=COLORS['text_secondary'],
+                 font=('Microsoft YaHei', 8)).pack(anchor='w')
+
+        # S容差：饱和度范围，控制颜色鲜艳程度
+        self.s_tol = ParameterSlider(pick_frame, label="S容差(饱和度)", from_=10, to=100, default=40,
+                                     command=lambda v: self._on_param_changed())
         self.s_tol.pack(fill='x', pady=1)
-        self.v_tol = ParameterSlider(pick_frame, label="V 容差", from_=10, to=100, default=40)
+        tk.Label(pick_frame, text="  饱和度范围：越大包含越淡的蓝色",
+                 bg=COLORS['bg_panel'], fg=COLORS['text_secondary'],
+                 font=('Microsoft YaHei', 8)).pack(anchor='w')
+
+        # V容差：亮度范围，控制明暗程度
+        self.v_tol = ParameterSlider(pick_frame, label="V容差(亮度)", from_=10, to=100, default=40,
+                                     command=lambda v: self._on_param_changed())
         self.v_tol.pack(fill='x', pady=1)
+        tk.Label(pick_frame, text="  亮度范围：越大包含越暗/越亮的蓝色",
+                 bg=COLORS['bg_panel'], fg=COLORS['text_secondary'],
+                 font=('Microsoft YaHei', 8)).pack(anchor='w')
 
         # 应用取样按钮
         self.apply_sample_btn = CustomButton(pick_frame, text="应用取样到阈值", style='primary',
@@ -843,6 +867,18 @@ class PorosityGUI:
             messagebox.showinfo("完成", f"CSV 已导出到:\n{path}")
         except Exception as e:
             messagebox.showerror("导出失败", str(e))
+
+    def _on_param_changed(self):
+        """参数改变时实时预览（防抖）"""
+        if self.original_image is None:
+            return
+
+        # 取消之前的定时器
+        if hasattr(self, '_preview_after_id'):
+            self.root.after_cancel(self._preview_after_id)
+
+        # 延迟200ms后预览，避免滑动时频繁计算
+        self._preview_after_id = self.root.after(200, self._preview_threshold)
 
     def run(self):
         """启动 GUI"""
