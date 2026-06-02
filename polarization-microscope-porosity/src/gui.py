@@ -429,10 +429,7 @@ class PorosityGUI:
         self.s_upper.set(s_upper)
         self.v_upper.set(v_upper)
 
-        self.status_bar.set_status(f"自动提取: H{h_mean} S{s_mean} V{v_mean}", COLORS['success'])
-
-        # 自动预览
-        self._preview_threshold()
+        self.status_bar.set_status(f"自动提取: H{h_mean} S{s_mean} V{v_mean}（点击预览分割查看效果）", COLORS['success'])
 
     def _enter_pick_mode(self):
         """进入取色模式"""
@@ -510,9 +507,6 @@ class PorosityGUI:
             f"已应用{len(self.sampled_colors)}个取样: H{h_min}-{h_max} S{s_min}-{s_max} V{v_min}-{v_max}",
             COLORS['success']
         )
-
-        # 自动预览
-        self._preview_threshold()
 
     def _clear_samples(self):
         """清空所有取样"""
@@ -674,40 +668,98 @@ class PorosityGUI:
             self.root.after(0, lambda: self._on_analysis_error(str(e)))
 
     def _analyze_single(self):
-        """单张分析"""
+        """单张分析（使用原始HSV，与预览一致）"""
         path = self.selected_path
         use_watershed = self.watershed_var.get()
 
         # 检查图像是否已加载
-        if self.original_image is None:
+        if self.original_image is None or self.original_image_hsv is None:
             self.root.after(0, lambda: messagebox.showerror("错误", "请先选择图像"))
             return
 
-        # 重新初始化分析器（使用最新配置）
-        self._init_analyzer()
-
         start = time.time()
 
-        # 使用已加载的图像进行分析（避免重复加载，确保与预览一致）
+        # 使用已加载的图像和原始HSV进行分析（与预览一致）
         original = self.original_image
-        processed = self.analyzer.preprocessor.process(original)
-        thresh_result = self.analyzer.thresh_segmenter.segment(processed)
-        mask = thresh_result['mask']
+        hsv = self.original_image_hsv
 
+        # 获取当前阈值
+        h_l = self.config['threshold_segmentation']['hsv_range']['lower'][0]
+        h_u = self.config['threshold_segmentation']['hsv_range']['upper'][0]
+        s_l = self.config['threshold_segmentation']['hsv_range']['lower'][1]
+        s_u = self.config['threshold_segmentation']['hsv_range']['upper'][1]
+        v_l = self.config['threshold_segmentation']['hsv_range']['lower'][2]
+        v_u = self.config['threshold_segmentation']['hsv_range']['upper'][2]
+
+        lower = np.array([h_l, s_l, v_l])
+        upper = np.array([h_u, s_u, v_u])
+
+        # 阈值分割（使用原始HSV）
+        mask = cv2.inRange(hsv, lower, upper)
+
+        # 形态学操作
+        morph_cfg = self.config.get('threshold_segmentation', {}).get('morphological_operations', {})
+        open_k = np.ones(tuple(morph_cfg.get('open_kernel', [3, 3])), np.uint8)
+        close_k = np.ones(tuple(morph_cfg.get('close_kernel', [5, 5])), np.uint8)
+        iterations = morph_cfg.get('iterations', 2)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, open_k, iterations=iterations)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, close_k, iterations=iterations)
+
+        # 分水岭算法（可选）
         if use_watershed:
-            watershed_result = self.analyzer.watershed_segmenter.segment(processed, mask)
-            mask = watershed_result['mask']
+            distance = cv2.distanceTransform(mask, cv2.DIST_L2, 5)
+            _, markers = cv2.threshold(distance, 0.5 * distance.max(), 255, cv2.THRESH_BINARY)
+            markers = np.uint8(markers)
+            _, markers = cv2.connectedComponents(markers)
+            markers = markers + 1
+            markers[mask == 0] = 0
+            markers = cv2.watershed(cv2.cvtColor(original, cv2.COLOR_BGR2RGB), markers)
+            mask = np.zeros_like(mask)
+            mask[markers > 1] = 255
 
-        stats = self.analyzer.calculator.calculate(mask)
-        stats['filename'] = Path(path).stem
-        stats['method'] = 'watershed' if use_watershed else 'threshold'
-        stats['processing_time'] = round(time.time() - start, 3)
+        # 最小孔隙面积过滤
+        min_area = self.config.get('area_calculation', {}).get('min_pore_area', 50)
+        if min_area > 0:
+            num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(mask, connectivity=8)
+            filtered_mask = np.zeros_like(mask)
+            for i in range(1, num_labels):
+                if stats[i, cv2.CC_STAT_AREA] >= min_area:
+                    filtered_mask[labels == i] = 255
+            mask = filtered_mask
 
-        crack_info = self.analyzer.calculator.detect_cracks(mask)
-        stats['crack_count'] = crack_info['crack_count']
+        # 计算统计信息
+        h, w = mask.shape
+        total_pixels = h * w
+        pore_pixels = np.sum(mask > 0)
+        porosity = (pore_pixels / total_pixels) * 100 if total_pixels > 0 else 0.0
 
-        annotated = self.analyzer.visualizer.create_annotated_image(mask)
-        overlay = self.analyzer.visualizer.overlay_on_original(original, mask)
+        num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(mask, connectivity=8)
+        pore_count = num_labels - 1  # 减去背景
+
+        areas = [stats[i, cv2.CC_STAT_AREA] for i in range(1, num_labels)]
+        avg_area = sum(areas) / len(areas) if areas else 0.0
+
+        stats_dict = {
+            'porosity_percent': round(porosity, 4),
+            'pore_count': pore_count,
+            'total_pore_pixels': int(pore_pixels),
+            'total_pixels': int(total_pixels),
+            'avg_pore_area': round(avg_area, 2),
+            'method': 'watershed' if use_watershed else 'threshold',
+            'processing_time': round(time.time() - start, 3),
+        }
+
+        # 生成标注图像
+        annotated = np.ones_like(original) * 255
+        annotated[mask > 0] = [255, 0, 0]
+
+        # 生成叠加图像
+        overlay = original.copy()
+        for i in range(3):
+            overlay[:, :, i] = np.where(mask > 0,
+                                         overlay[:, :, i] * 0.5 + [255, 0, 0][i] * 0.5,
+                                         overlay[:, :, i])
+        overlay = overlay.astype(np.uint8)
 
         self.current_result = {
             'filename': Path(path).stem,
@@ -715,7 +767,7 @@ class PorosityGUI:
             'annotated': annotated,
             'overlay': overlay,
             'mask': mask,
-            'stats': stats
+            'stats': stats_dict
         }
 
         # 更新 UI

@@ -196,3 +196,296 @@ UnboundLocalError: cannot access local variable 'porosity' where it is not assoc
 2026-06-02 18:41:19 - 配置已更新
 2026-06-02 18:41:20 - 显示预览图像: (3600, 4800, 3), 面孔率=0.00%
 2026-06-02 18:41:20 - 预览完成
+2026-06-02 18:43:56 - ==================================================
+2026-06-02 18:43:56 - 程序启动
+2026-06-02 18:43:57 - _on_param_changed 被调用, original_image=False
+2026-06-02 18:43:57 - _on_param_changed 被调用, original_image=False
+2026-06-02 18:43:57 - _on_param_changed 被调用, original_image=False
+2026-06-02 18:44:04 - 尝试加载图像: D:/AI/Test/N6-5-(-)10X.jpg
+2026-06-02 18:44:04 - 图像加载成功: (3600, 4800, 3)
+2026-06-02 18:44:09 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:09 - 已设置200ms后预览
+2026-06-02 18:44:09 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:09 - 已设置200ms后预览
+2026-06-02 18:44:09 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:09 - 已设置200ms后预览
+2026-06-02 18:44:09 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:09 - 已设置200ms后预览
+2026-06-02 18:44:09 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:09 - 已设置200ms后预览
+2026-06-02 18:44:09 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:09 - 已设置200ms后预览
+2026-06-02 18:44:11 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:11 - 已设置200ms后预览
+2026-06-02 18:44:11 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:11 - 已设置200ms后预览
+2026-06-02 18:44:11 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:11 - 已设置200ms后预览
+2026-06-02 18:44:11 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:12 - 已设置200ms后预览
+2026-06-02 18:44:12 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:12 - 已设置200ms后预览
+2026-06-02 18:44:12 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:12 - 已设置200ms后预览
+2026-06-02 18:44:12 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:12 - 已设置200ms后预览
+2026-06-02 18:44:12 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:12 - 已设置200ms后预览
+2026-06-02 18:44:13 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:13 - 已设置200ms后预览
+2026-06-02 18:44:13 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:13 - 已设置200ms后预览
+2026-06-02 18:44:13 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:13 - 已设置200ms后预览
+2026-06-02 18:44:13 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:13 - 已设置200ms后预览
+2026-06-02 18:44:20 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:20 - 已设置200ms后预览
+2026-06-02 18:44:20 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:20 - 已设置200ms后预览
+2026-06-02 18:44:20 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:20 - 已设置200ms后预览
+2026-06-02 18:44:20 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:20 - 已设置200ms后预览
+2026-06-02 18:44:20 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:20 - 已设置200ms后预览
+2026-06-02 18:44:20 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:20 - 已设置200ms后预览
+2026-06-02 18:44:22 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:22 - 已设置200ms后预览
+2026-06-02 18:44:22 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:22 - 已设置200ms后预览
+2026-06-02 18:44:22 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:22 - 已设置200ms后预览
+2026-06-02 18:44:22 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:22 - 已设置200ms后预览
+2026-06-02 18:44:22 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:22 - 已设置200ms后预览
+2026-06-02 18:44:22 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:22 - 已设置200ms后预览
+2026-06-02 18:44:22 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:22 - 已设置200ms后预览
+2026-06-02 18:44:22 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:22 - 已设置200ms后预览
+2026-06-02 18:44:22 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:22 - 已设置200ms后预览
+2026-06-02 18:44:22 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:22 - 已设置200ms后预览
+2026-06-02 18:44:22 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:22 - 已设置200ms后预览
+2026-06-02 18:44:22 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:22 - 已设置200ms后预览
+2026-06-02 18:44:22 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:22 - 已设置200ms后预览
+2026-06-02 18:44:22 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:22 - 已设置200ms后预览
+2026-06-02 18:44:22 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:22 - 已设置200ms后预览
+2026-06-02 18:44:22 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:22 - 已设置200ms后预览
+2026-06-02 18:44:22 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:22 - 已设置200ms后预览
+2026-06-02 18:44:22 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:22 - 已设置200ms后预览
+2026-06-02 18:44:22 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:22 - 已设置200ms后预览
+2026-06-02 18:44:22 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:22 - 已设置200ms后预览
+2026-06-02 18:44:25 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:25 - 已设置200ms后预览
+2026-06-02 18:44:25 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:25 - 已设置200ms后预览
+2026-06-02 18:44:25 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:25 - 已设置200ms后预览
+2026-06-02 18:44:27 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:27 - 已设置200ms后预览
+2026-06-02 18:44:27 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:27 - 已设置200ms后预览
+2026-06-02 18:44:27 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:27 - 已设置200ms后预览
+2026-06-02 18:44:27 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:27 - 已设置200ms后预览
+2026-06-02 18:44:27 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:27 - 已设置200ms后预览
+2026-06-02 18:44:27 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:27 - 已设置200ms后预览
+2026-06-02 18:44:27 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:27 - 已设置200ms后预览
+2026-06-02 18:44:27 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:27 - 已设置200ms后预览
+2026-06-02 18:44:27 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:27 - 已设置200ms后预览
+2026-06-02 18:44:27 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:27 - 已设置200ms后预览
+2026-06-02 18:44:27 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:27 - 已设置200ms后预览
+2026-06-02 18:44:27 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:27 - 已设置200ms后预览
+2026-06-02 18:44:27 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:27 - 已设置200ms后预览
+2026-06-02 18:44:27 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:27 - 已设置200ms后预览
+2026-06-02 18:44:27 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:27 - 已设置200ms后预览
+2026-06-02 18:44:28 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:28 - 已设置200ms后预览
+2026-06-02 18:44:28 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:28 - 已设置200ms后预览
+2026-06-02 18:44:28 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:28 - 已设置200ms后预览
+2026-06-02 18:44:28 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:28 - 已设置200ms后预览
+2026-06-02 18:44:28 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:28 - 已设置200ms后预览
+2026-06-02 18:44:28 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:28 - 已设置200ms后预览
+2026-06-02 18:44:28 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:28 - 已设置200ms后预览
+2026-06-02 18:44:28 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:28 - 已设置200ms后预览
+2026-06-02 18:44:28 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:28 - 已设置200ms后预览
+2026-06-02 18:44:31 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:31 - 已设置200ms后预览
+2026-06-02 18:44:32 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:32 - 已设置200ms后预览
+2026-06-02 18:44:32 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:32 - 已设置200ms后预览
+2026-06-02 18:44:32 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:32 - 已设置200ms后预览
+2026-06-02 18:44:32 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:32 - 已设置200ms后预览
+2026-06-02 18:44:32 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:32 - 已设置200ms后预览
+2026-06-02 18:44:32 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:32 - 已设置200ms后预览
+2026-06-02 18:44:32 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:32 - 已设置200ms后预览
+2026-06-02 18:44:32 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:32 - 已设置200ms后预览
+2026-06-02 18:44:32 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:32 - 已设置200ms后预览
+2026-06-02 18:44:32 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:32 - 已设置200ms后预览
+2026-06-02 18:44:32 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:32 - 已设置200ms后预览
+2026-06-02 18:44:32 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:32 - 已设置200ms后预览
+2026-06-02 18:44:32 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:32 - 已设置200ms后预览
+2026-06-02 18:44:32 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:32 - 已设置200ms后预览
+2026-06-02 18:44:32 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:32 - 已设置200ms后预览
+2026-06-02 18:44:34 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:34 - 已设置200ms后预览
+2026-06-02 18:44:34 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:34 - 已设置200ms后预览
+2026-06-02 18:44:36 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:36 - 已设置200ms后预览
+2026-06-02 18:44:36 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:36 - 已设置200ms后预览
+2026-06-02 18:44:36 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:36 - 已设置200ms后预览
+2026-06-02 18:44:36 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:36 - 已设置200ms后预览
+2026-06-02 18:44:36 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:36 - 已设置200ms后预览
+2026-06-02 18:44:36 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:36 - 已设置200ms后预览
+2026-06-02 18:44:36 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:36 - 已设置200ms后预览
+2026-06-02 18:44:36 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:36 - 已设置200ms后预览
+2026-06-02 18:44:36 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:36 - 已设置200ms后预览
+2026-06-02 18:44:36 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:36 - 已设置200ms后预览
+2026-06-02 18:44:36 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:36 - 已设置200ms后预览
+2026-06-02 18:44:36 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:36 - 已设置200ms后预览
+2026-06-02 18:44:36 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:36 - 已设置200ms后预览
+2026-06-02 18:44:36 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:36 - 已设置200ms后预览
+2026-06-02 18:44:36 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:36 - 已设置200ms后预览
+2026-06-02 18:44:36 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:36 - 已设置200ms后预览
+2026-06-02 18:44:37 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:37 - 已设置200ms后预览
+2026-06-02 18:44:39 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:39 - 已设置200ms后预览
+2026-06-02 18:44:39 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:39 - 已设置200ms后预览
+2026-06-02 18:44:39 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:39 - 已设置200ms后预览
+2026-06-02 18:44:39 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:39 - 已设置200ms后预览
+2026-06-02 18:44:39 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:39 - 已设置200ms后预览
+2026-06-02 18:44:39 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:39 - 已设置200ms后预览
+2026-06-02 18:44:39 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:39 - 已设置200ms后预览
+2026-06-02 18:44:39 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:39 - 已设置200ms后预览
+2026-06-02 18:44:43 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:43 - 已设置200ms后预览
+2026-06-02 18:44:43 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:43 - 已设置200ms后预览
+2026-06-02 18:44:50 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:50 - 已设置200ms后预览
+2026-06-02 18:44:50 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:50 - 已设置200ms后预览
+2026-06-02 18:44:50 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:50 - 已设置200ms后预览
+2026-06-02 18:44:50 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:50 - 已设置200ms后预览
+2026-06-02 18:44:50 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:50 - 已设置200ms后预览
+2026-06-02 18:44:50 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:50 - 已设置200ms后预览
+2026-06-02 18:44:54 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:54 - 已设置200ms后预览
+2026-06-02 18:44:54 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:54 - 已设置200ms后预览
+2026-06-02 18:44:56 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:56 - 已设置200ms后预览
+2026-06-02 18:44:56 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:56 - 已设置200ms后预览
+2026-06-02 18:44:56 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:56 - 已设置200ms后预览
+2026-06-02 18:44:56 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:56 - 已设置200ms后预览
+2026-06-02 18:44:56 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:56 - 已设置200ms后预览
+2026-06-02 18:44:56 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:56 - 已设置200ms后预览
+2026-06-02 18:44:56 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:56 - 已设置200ms后预览
+2026-06-02 18:44:56 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:56 - 已设置200ms后预览
+2026-06-02 18:44:56 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:56 - 已设置200ms后预览
+2026-06-02 18:44:56 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:44:56 - 已设置200ms后预览
+2026-06-02 18:45:01 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:45:01 - 已设置200ms后预览
+2026-06-02 18:45:03 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:45:03 - 已设置200ms后预览
+2026-06-02 18:45:03 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:45:03 - 已设置200ms后预览
+2026-06-02 18:45:03 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:45:03 - 已设置200ms后预览
+2026-06-02 18:45:03 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:45:03 - 已设置200ms后预览
+2026-06-02 18:45:03 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:45:03 - 已设置200ms后预览
+2026-06-02 18:45:03 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:45:03 - 已设置200ms后预览
+2026-06-02 18:45:06 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:45:06 - 已设置200ms后预览
+2026-06-02 18:45:10 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:45:10 - 已设置200ms后预览
