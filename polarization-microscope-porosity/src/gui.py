@@ -282,7 +282,7 @@ class PorosityGUI:
         # 步骤2：取色笔
         tk.Label(pick_frame, text="Step 2: 取色笔精确校正", bg=COLORS['bg_panel'],
                  fg=COLORS['text'], font=('Microsoft YaHei', 9, 'bold')).pack(anchor='w')
-        self.pick_btn = CustomButton(pick_frame, text="开始取色", style='secondary',
+        self.pick_btn = CustomButton(pick_frame, text="取色提示", style='secondary',
                                       command=self._enter_pick_mode)
         self.pick_btn.pack(fill='x', pady=(2, 2))
 
@@ -429,23 +429,23 @@ class PorosityGUI:
         self.s_upper.set(s_upper)
         self.v_upper.set(v_upper)
 
-        self.status_bar.set_status(f"自动提取: H{h_mean} S{s_mean} V{v_mean}（点击预览分割查看效果）", COLORS['success'])
+        self.status_bar.set_status(f"自动提取: H{h_mean} S{s_mean} V{v_mean}", COLORS['success'])
+
+        # 自动预览
+        self._preview_threshold()
 
     def _enter_pick_mode(self):
-        """进入取色模式"""
+        """取色提示"""
         if self.original_image is None:
             messagebox.showwarning("提示", "请先选择图像！")
             return
 
-        self.pick_mode = True
-        self.pick_btn.config(text="取色中...")
-        self.pick_btn.set_style('primary')
-        self.status_bar.set_status("请点击原图上的蓝色孔隙区域", COLORS['warning'])
-        messagebox.showinfo("取色提示", "请点击原图上的蓝色孔隙区域\n可以点击多个位置取平均")
+        self.status_bar.set_status("请点击原图上的蓝色孔隙区域，任意点数均可", COLORS['warning'])
+        messagebox.showinfo("取色提示", "直接点击原图上的蓝色孔隙区域即可\n任意点数均可，每次点击自动应用并预览")
 
     def _on_image_pick(self, img_x, img_y):
-        """处理图像点击取色"""
-        if not self.pick_mode or self.original_image_hsv is None:
+        """处理图像点击取色——任意点数均可，每次点击自动应用阈值并预览"""
+        if self.original_image_hsv is None:
             return
 
         # 获取点击位置的HSV值（取3x3区域平均，减少单点噪声）
@@ -463,17 +463,13 @@ class PorosityGUI:
 
         # 在状态栏显示最新取样
         self.status_bar.set_status(
-            f"取样#{len(self.sampled_colors)}: H={sample_h} S={sample_s} V={sample_v}",
+            f"取样#{len(self.sampled_colors)}: H={sample_h} S={sample_s} V={sample_v}（已自动应用）",
             COLORS['success']
         )
 
-        # 如果取样超过5个，自动应用
-        if len(self.sampled_colors) >= 5:
-            self._apply_sampled_threshold()
-            self.pick_mode = False
-            self.pick_btn.config(text="开始取色")
-            self.pick_btn.set_style('secondary')
-            messagebox.showinfo("取色完成", "已自动应用5个取样点到阈值")
+        # 每次取样都自动应用阈值并预览（不限制点数）
+        self._apply_sampled_threshold()
+        self._preview_threshold()
 
     def _apply_sampled_threshold(self):
         """将取样颜色应用到阈值设置"""
@@ -513,8 +509,6 @@ class PorosityGUI:
         self.sampled_colors = []
         self.sample_label.config(text="已取样: 0 个")
         self.pick_mode = False
-        self.pick_btn.config(text="开始取色")
-        self.pick_btn.set_style('secondary')
         self.status_bar.set_status("取样已清空", COLORS['text_secondary'])
 
     def _preview_threshold(self):
