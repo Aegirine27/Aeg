@@ -524,21 +524,16 @@ class PorosityGUI:
         self.status_bar.set_status("取样已清空", COLORS['text_secondary'])
 
     def _preview_threshold(self):
-        """实时预览当前阈值的分割效果（使用与正式分析相同的预处理流程）"""
-        log("_preview_threshold 开始执行")
-        if self.original_image is None:
-            log("original_image 为 None，跳过")
+        """实时预览当前阈值的分割效果（使用原始HSV，与用户看到的图像一致）"""
+        if self.original_image is None or self.original_image_hsv is None:
             return
 
         try:
             # 先更新配置（确保阈值是最新的）
             self._update_config_from_ui()
-            log("配置已更新")
 
-            # 使用与正式分析相同的预处理流程
-            preprocessor = ImagePreprocessor(self.config)
-            processed = preprocessor.process(self.original_image)
-            hsv = processed['hsv']
+            # 使用原始HSV进行预览（与用户看到的图像一致）
+            hsv = self.original_image_hsv
 
             # 使用当前UI的阈值参数进行分割
             h_l = self.h_lower.get()
@@ -582,19 +577,15 @@ class PorosityGUI:
             porosity = (pore_pixels / total_pixels) * 100
 
             # 显示预览
-            log(f"显示预览图像: {annotated.shape}, 面孔率={porosity:.2f}%")
             self.annotated_viewer.show_image(annotated)
 
             self.status_bar.set_status(
                 f"预览: 面孔率={porosity:.2f}% 像素={pore_pixels}",
                 COLORS['accent']
             )
-            log("预览完成")
 
         except Exception as e:
             import traceback
-            tb = traceback.format_exc()
-            log(f"预览错误: {e}\n{tb}")
             traceback.print_exc()
             self.status_bar.set_status(f"预览错误: {str(e)[:50]}", COLORS['danger'])
 
