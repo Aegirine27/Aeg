@@ -40,7 +40,7 @@ class ImageViewer(tk.Canvas):
         - 双击可放大查看
     """
 
-    def __init__(self, parent, title="图像", width=400, height=400, **kwargs):
+    def __init__(self, parent, title="图像", width=400, height=400, click_callback=None, **kwargs):
         super().__init__(parent, width=width, height=height,
                          bg='#E8E8E8', highlightthickness=1,
                          highlightbackground=COLORS['border'], **kwargs)
@@ -50,11 +50,37 @@ class ImageViewer(tk.Canvas):
         self.canvas_height = height
         self.current_image = None  # 当前显示的 PIL Image
         self.photo_image = None    # PhotoImage 引用（防止GC）
+        self.click_callback = click_callback  # 鼠标点击回调
+        self.display_offset = (0, 0)  # 图像在画布中的偏移
+        self.display_scale = 1.0      # 图像缩放比例
 
         # 标题文字
         self.create_text(width//2, height//2, text=f"{title}\n(暂无图像)",
                          fill=COLORS['text_secondary'], font=('Microsoft YaHei', 12),
                          justify='center')
+
+        # 绑定鼠标点击事件
+        if self.click_callback:
+            self.bind('<Button-1>', self._on_click)
+            self.config(cursor='crosshair')
+
+    def _on_click(self, event):
+        """处理鼠标点击，将画布坐标转换为图像坐标"""
+        if self.current_image is None or self.click_callback is None:
+            return
+
+        # 计算图像在画布中的实际位置
+        img_w = int(self.current_image.width * self.display_scale)
+        img_h = int(self.current_image.height * self.display_scale)
+        offset_x = (self.canvas_width - img_w) // 2
+        offset_y = (self.canvas_height - img_h) // 2
+
+        # 检查点击是否在图像范围内
+        if offset_x <= event.x <= offset_x + img_w and offset_y <= event.y <= offset_y + img_h:
+            # 转换回原始图像坐标
+            img_x = int((event.x - offset_x) / self.display_scale)
+            img_y = int((event.y - offset_y) / self.display_scale)
+            self.click_callback(img_x, img_y)
 
     def show_image(self, cv_image):
         """
@@ -75,12 +101,13 @@ class ImageViewer(tk.Canvas):
 
         # 转为 PIL Image
         pil_image = Image.fromarray(rgb_image)
+        self.current_image = pil_image  # 保存原始PIL图像
 
         # 自适应缩放
-        pil_image = self._fit_image(pil_image)
+        scaled_image, self.display_scale = self._fit_image(pil_image)
 
         # 转为 PhotoImage
-        self.photo_image = ImageTk.PhotoImage(pil_image)
+        self.photo_image = ImageTk.PhotoImage(scaled_image)
 
         # 清空画布并显示
         self.delete("all")
@@ -92,19 +119,26 @@ class ImageViewer(tk.Canvas):
                          fill=COLORS['primary'], font=('Microsoft YaHei', 10, 'bold'),
                          tags='title')
 
+        # 如果有取色回调，显示提示
+        if self.click_callback:
+            self.create_text(self.canvas_width//2, self.canvas_height - 15,
+                             text="点击图像取色", anchor='s',
+                             fill=COLORS['accent'], font=('Microsoft YaHei', 9),
+                             tags='hint')
+
     def _fit_image(self, pil_image):
-        """按比例缩放图像以适应画布"""
+        """按比例缩放图像以适应画布，返回缩放后的图像和缩放比例"""
         img_w, img_h = pil_image.size
         canvas_w, canvas_h = self.canvas_width - 20, self.canvas_height - 40
 
         if img_w == 0 or img_h == 0:
-            return pil_image
+            return pil_image, 1.0
 
         scale = min(canvas_w / img_w, canvas_h / img_h, 1.0)
         new_w = int(img_w * scale)
         new_h = int(img_h * scale)
 
-        return pil_image.resize((new_w, new_h), Image.LANCZOS)
+        return pil_image.resize((new_w, new_h), Image.LANCZOS), scale
 
     def clear(self):
         """清空显示"""

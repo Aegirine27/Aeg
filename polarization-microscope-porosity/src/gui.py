@@ -3,7 +3,7 @@ GUI 主窗口模块
 
 整合所有组件，实现完整的交互逻辑：
     - 文件/文件夹选择
-    - 参数调整
+    - 参数调整（含Photoshop式取色分割）
     - 图像分析（后台线程）
     - 结果展示
     - 结果保存
@@ -16,6 +16,8 @@ import json
 import csv
 import time
 import types
+import cv2
+import numpy as np
 
 from .gui_components import (
     COLORS, ImageViewer, ResultCard, ParameterSlider,
@@ -46,9 +48,18 @@ class PorosityGUI:
         self.batch_results = []
         self.selected_path = None
 
+        # 取色相关状态
+        self.original_image = None       # 原始BGR图像
+        self.original_image_hsv = None   # HSV图像
+        self.pick_mode = False           # 是否处于取色模式
+        self.sampled_colors = []         # 用户取样的颜色列表 [(h,s,v), ...]
+        self.tolerance_h = 10            # H容差
+        self.tolerance_s = 40            # S容差
+        self.tolerance_v = 40            # V容差
+
         # 创建主窗口
         self.root = tk.Tk()
-        self.root.title("🧪 偏光显微镜面孔率识别系统 v1.0")
+        self.root.title("偏光显微镜面孔率识别系统 v1.0")
         self.root.geometry("1200x800")
         self.root.minsize(1000, 700)
         self.root.configure(bg=COLORS['bg_main'])
@@ -82,7 +93,7 @@ class PorosityGUI:
         title_frame.pack(fill='x')
         title_frame.pack_propagate(False)
 
-        tk.Label(title_frame, text="🧪 偏光显微镜面孔率识别系统",
+        tk.Label(title_frame, text="偏光显微镜面孔率识别系统",
                  bg=COLORS['primary'], fg='white',
                  font=('Microsoft YaHei', 14, 'bold')).pack(side='left', padx=15, pady=8)
 
@@ -111,7 +122,7 @@ class PorosityGUI:
         left_frame.pack_propagate(False)
 
         # --- 输入选择区 ---
-        input_frame = tk.LabelFrame(left_frame, text=" 📂 输入选择 ",
+        input_frame = tk.LabelFrame(left_frame, text=" 输入选择 ",
                                      bg=COLORS['bg_panel'], fg=COLORS['primary'],
                                      font=('Microsoft YaHei', 10, 'bold'),
                                      padx=10, pady=10)
@@ -140,8 +151,11 @@ class PorosityGUI:
                                         command=self._select_file)
         self.select_btn.pack(fill='x', pady=(0, 3))
 
+        # --- 取色校正面板（新增） ---
+        self._build_color_pick_panel(left_frame)
+
         # --- 参数设置区 ---
-        param_frame = tk.LabelFrame(left_frame, text=" ⚙️ 参数设置 ",
+        param_frame = tk.LabelFrame(left_frame, text=" 参数设置 ",
                                      bg=COLORS['bg_panel'], fg=COLORS['primary'],
                                      font=('Microsoft YaHei', 10, 'bold'),
                                      padx=10, pady=10)
@@ -186,21 +200,73 @@ class PorosityGUI:
         action_frame = tk.Frame(left_frame, bg=COLORS['bg_panel'])
         action_frame.pack(fill='x', padx=10, pady=(10, 5))
 
-        self.analyze_btn = CustomButton(action_frame, text="▶ 开始分析", style='primary',
+        self.analyze_btn = CustomButton(action_frame, text="开始分析", style='primary',
                                          command=self._start_analysis)
         self.analyze_btn.pack(fill='x', pady=(0, 5))
 
-        self.reset_btn = CustomButton(action_frame, text="↺ 重置参数", style='secondary',
+        self.preview_btn = CustomButton(action_frame, text="预览分割", style='secondary',
+                                         command=self._preview_threshold)
+        self.preview_btn.pack(fill='x', pady=(0, 5))
+
+        self.reset_btn = CustomButton(action_frame, text="重置参数", style='secondary',
                                        command=self._reset_params)
         self.reset_btn.pack(fill='x', pady=(0, 5))
 
-        self.save_btn = CustomButton(action_frame, text="💾 保存结果", style='success',
+        self.save_btn = CustomButton(action_frame, text="保存结果", style='success',
                                       command=self._save_results, state='disabled')
         self.save_btn.pack(fill='x', pady=(0, 5))
 
-        self.export_btn = CustomButton(action_frame, text="📊 导出CSV", style='secondary',
+        self.export_btn = CustomButton(action_frame, text="导出CSV", style='secondary',
                                         command=self._export_csv, state='disabled')
         self.export_btn.pack(fill='x')
+
+    def _build_color_pick_panel(self, parent):
+        """构建取色校正面板"""
+        pick_frame = tk.LabelFrame(parent, text=" 取色校正 ",
+                                    bg=COLORS['bg_panel'], fg=COLORS['primary'],
+                                    font=('Microsoft YaHei', 10, 'bold'),
+                                    padx=10, pady=10)
+        pick_frame.pack(fill='x', padx=10, pady=5)
+
+        # 步骤1：自动提取蓝色
+        tk.Label(pick_frame, text="Step 1: 自动提取蓝色", bg=COLORS['bg_panel'],
+                 fg=COLORS['text'], font=('Microsoft YaHei', 9, 'bold')).pack(anchor='w')
+        self.auto_blue_btn = CustomButton(pick_frame, text="自动提取蓝色", style='secondary',
+                                           command=self._auto_extract_blue)
+        self.auto_blue_btn.pack(fill='x', pady=(2, 5))
+
+        # 步骤2：取色笔
+        tk.Label(pick_frame, text="Step 2: 取色笔精确校正", bg=COLORS['bg_panel'],
+                 fg=COLORS['text'], font=('Microsoft YaHei', 9, 'bold')).pack(anchor='w')
+        self.pick_btn = CustomButton(pick_frame, text="开始取色", style='secondary',
+                                      command=self._enter_pick_mode)
+        self.pick_btn.pack(fill='x', pady=(2, 2))
+
+        # 取样状态
+        self.sample_label = tk.Label(pick_frame, text="已取样: 0 个", bg=COLORS['bg_panel'],
+                                      fg=COLORS['text_secondary'], font=('Microsoft YaHei', 9))
+        self.sample_label.pack(anchor='w')
+
+        # 步骤3：容差调整
+        tk.Label(pick_frame, text="Step 3: 调整容差", bg=COLORS['bg_panel'],
+                 fg=COLORS['text'], font=('Microsoft YaHei', 9, 'bold')).pack(anchor='w', pady=(5, 0))
+
+        self.h_tol = ParameterSlider(pick_frame, label="H 容差", from_=1, to=30, default=10)
+        self.h_tol.pack(fill='x', pady=1)
+        self.s_tol = ParameterSlider(pick_frame, label="S 容差", from_=10, to=100, default=40)
+        self.s_tol.pack(fill='x', pady=1)
+        self.v_tol = ParameterSlider(pick_frame, label="V 容差", from_=10, to=100, default=40)
+        self.v_tol.pack(fill='x', pady=1)
+
+        # 应用取样按钮
+        self.apply_sample_btn = CustomButton(pick_frame, text="应用取样到阈值", style='primary',
+                                              command=self._apply_sampled_threshold)
+        self.apply_sample_btn.pack(fill='x', pady=(5, 0))
+
+        # 清空取样
+        self.clear_sample_btn = CustomButton(pick_frame, text="清空取样", style='danger',
+                                              command=self._clear_samples)
+        self.clear_sample_btn.pack(fill='x', pady=(2, 0))
 
     def _build_right_panel(self, parent):
         """构建右侧面板"""
@@ -208,7 +274,7 @@ class PorosityGUI:
         right_frame.pack(side='left', fill='both', expand=True)
 
         # --- 图像预览区 ---
-        preview_frame = tk.LabelFrame(right_frame, text=" 📷 图像预览 ",
+        preview_frame = tk.LabelFrame(right_frame, text=" 图像预览 ",
                                        bg=COLORS['bg_main'], fg=COLORS['primary'],
                                        font=('Microsoft YaHei', 10, 'bold'),
                                        padx=5, pady=5)
@@ -221,7 +287,10 @@ class PorosityGUI:
         img_container.grid_columnconfigure(1, weight=1)
         img_container.grid_rowconfigure(0, weight=1)
 
-        self.original_viewer = ImageViewer(img_container, title="原始图像", width=420, height=420)
+        # 原图支持点击取色
+        self.original_viewer = ImageViewer(img_container, title="原始图像(点击取色)",
+                                            width=420, height=420,
+                                            click_callback=self._on_image_pick)
         self.original_viewer.grid(row=0, column=0, padx=(0, 5), sticky='nsew')
 
         self.annotated_viewer = ImageViewer(img_container, title="标注图像（孔隙=蓝色，背景=白色）",
@@ -229,7 +298,7 @@ class PorosityGUI:
         self.annotated_viewer.grid(row=0, column=1, padx=(5, 0), sticky='nsew')
 
         # --- 结果展示区 ---
-        result_frame = tk.LabelFrame(right_frame, text=" 📊 分析结果 ",
+        result_frame = tk.LabelFrame(right_frame, text=" 分析结果 ",
                                       bg=COLORS['bg_panel'], fg=COLORS['primary'],
                                       font=('Microsoft YaHei', 10, 'bold'),
                                       padx=10, pady=10)
@@ -255,6 +324,187 @@ class PorosityGUI:
 
         self.time_card = ResultCard(stats_container, label="处理时间", value="--", unit="s")
         self.time_card.pack(side='left', padx=10)
+
+    # ============ 取色功能 ============
+
+    def _auto_extract_blue(self):
+        """自动提取蓝色：基于图像中蓝色像素的统计自动设置阈值"""
+        if self.original_image_hsv is None:
+            messagebox.showwarning("提示", "请先选择图像！")
+            return
+
+        hsv = self.original_image_hsv
+        h, s, v = hsv[:,:,0], hsv[:,:,1], hsv[:,:,2]
+
+        # 粗略筛选蓝色区域
+        blue_mask = (h > 90) & (h < 140) & (s > 50) & (v > 40)
+        blue_pixels = hsv[blue_mask]
+
+        if len(blue_pixels) == 0:
+            messagebox.showwarning("提示", "未检测到明显的蓝色区域！")
+            return
+
+        # 计算蓝色区域的统计值
+        h_mean = int(np.mean(blue_pixels[:, 0]))
+        s_mean = int(np.mean(blue_pixels[:, 1]))
+        v_mean = int(np.mean(blue_pixels[:, 2]))
+
+        h_std = int(np.std(blue_pixels[:, 0]))
+        s_std = int(np.std(blue_pixels[:, 1]))
+        v_std = int(np.std(blue_pixels[:, 2]))
+
+        # 设置阈值为 均值 ± 2*标准差
+        h_lower = max(0, h_mean - max(10, h_std * 2))
+        h_upper = min(180, h_mean + max(10, h_std * 2))
+        s_lower = max(0, s_mean - max(30, s_std))
+        s_upper = min(255, s_mean + max(30, s_std))
+        v_lower = max(0, v_mean - max(30, v_std))
+        v_upper = min(255, v_mean + max(30, v_std))
+
+        self.h_lower.set(h_lower)
+        self.s_lower.set(s_lower)
+        self.v_lower.set(v_lower)
+        self.h_upper.set(h_upper)
+        self.s_upper.set(s_upper)
+        self.v_upper.set(v_upper)
+
+        self.status_bar.set_status(f"自动提取: H{h_mean} S{s_mean} V{v_mean}", COLORS['success'])
+
+        # 自动预览
+        self._preview_threshold()
+
+    def _enter_pick_mode(self):
+        """进入取色模式"""
+        if self.original_image is None:
+            messagebox.showwarning("提示", "请先选择图像！")
+            return
+
+        self.pick_mode = True
+        self.pick_btn.config(text="取色中...", style='primary')
+        self.status_bar.set_status("请点击原图上的蓝色孔隙区域", COLORS['warning'])
+        messagebox.showinfo("取色提示", "请点击原图上的蓝色孔隙区域\n可以点击多个位置取平均")
+
+    def _on_image_pick(self, img_x, img_y):
+        """处理图像点击取色"""
+        if not self.pick_mode or self.original_image_hsv is None:
+            return
+
+        # 获取点击位置的HSV值（取3x3区域平均，减少单点噪声）
+        h, w = self.original_image_hsv.shape[:2]
+        x1, y1 = max(0, img_x - 1), max(0, img_y - 1)
+        x2, y2 = min(w, img_x + 2), min(h, img_y + 2)
+
+        roi = self.original_image_hsv[y1:y2, x1:x2]
+        sample_h = int(np.mean(roi[:, :, 0]))
+        sample_s = int(np.mean(roi[:, :, 1]))
+        sample_v = int(np.mean(roi[:, :, 2]))
+
+        self.sampled_colors.append((sample_h, sample_s, sample_v))
+        self.sample_label.config(text=f"已取样: {len(self.sampled_colors)} 个")
+
+        # 在状态栏显示最新取样
+        self.status_bar.set_status(
+            f"取样#{len(self.sampled_colors)}: H={sample_h} S={sample_s} V={sample_v}",
+            COLORS['success']
+        )
+
+        # 如果取样超过5个，自动应用
+        if len(self.sampled_colors) >= 5:
+            self._apply_sampled_threshold()
+            self.pick_mode = False
+            self.pick_btn.config(text="开始取色", style='secondary')
+            messagebox.showinfo("取色完成", "已自动应用5个取样点到阈值")
+
+    def _apply_sampled_threshold(self):
+        """将取样颜色应用到阈值设置"""
+        if not self.sampled_colors:
+            messagebox.showwarning("提示", "请先取样！")
+            return
+
+        # 获取容差
+        tol_h = self.h_tol.get()
+        tol_s = self.s_tol.get()
+        tol_v = self.v_tol.get()
+
+        # 计算所有取样颜色的范围
+        h_vals = [c[0] for c in self.sampled_colors]
+        s_vals = [c[1] for c in self.sampled_colors]
+        v_vals = [c[2] for c in self.sampled_colors]
+
+        h_min, h_max = min(h_vals), max(h_vals)
+        s_min, s_max = min(s_vals), max(s_vals)
+        v_min, v_max = min(v_vals), max(v_vals)
+
+        # 设置阈值：取样范围 ± 容差
+        self.h_lower.set(max(0, h_min - tol_h))
+        self.h_upper.set(min(180, h_max + tol_h))
+        self.s_lower.set(max(0, s_min - tol_s))
+        self.s_upper.set(min(255, s_max + tol_s))
+        self.v_lower.set(max(0, v_min - tol_v))
+        self.v_upper.set(min(255, v_max + tol_v))
+
+        self.status_bar.set_status(
+            f"已应用{len(self.sampled_colors)}个取样: H{h_min}-{h_max} S{s_min}-{s_max} V{v_min}-{v_max}",
+            COLORS['success']
+        )
+
+        # 自动预览
+        self._preview_threshold()
+
+    def _clear_samples(self):
+        """清空所有取样"""
+        self.sampled_colors = []
+        self.sample_label.config(text="已取样: 0 个")
+        self.pick_mode = False
+        self.pick_btn.config(text="开始取色", style='secondary')
+        self.status_bar.set_status("取样已清空", COLORS['text_secondary'])
+
+    def _preview_threshold(self):
+        """实时预览当前阈值的分割效果"""
+        if self.original_image is None or self.original_image_hsv is None:
+            messagebox.showwarning("提示", "请先选择图像！")
+            return
+
+        try:
+            # 使用当前UI的阈值参数进行分割
+            h_l = self.h_lower.get()
+            h_u = self.h_upper.get()
+            s_l = self.s_lower.get()
+            s_u = self.s_upper.get()
+            v_l = self.v_lower.get()
+            v_u = self.v_upper.get()
+
+            lower = np.array([h_l, s_l, v_l])
+            upper = np.array([h_u, s_u, v_u])
+
+            # 执行阈值分割
+            mask = cv2.inRange(self.original_image_hsv, lower, upper)
+
+            # 形态学操作
+            open_k = np.ones((3, 3), np.uint8)
+            close_k = np.ones((5, 5), np.uint8)
+            mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, open_k, iterations=2)
+            mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, close_k, iterations=2)
+
+            # 生成标注图像
+            annotated = np.ones_like(self.original_image) * 255
+            annotated[mask > 0] = [255, 0, 0]  # BGR蓝色
+
+            # 显示预览
+            self.annotated_viewer.show_image(annotated)
+
+            # 计算并显示预览面孔率
+            pore_pixels = np.sum(mask > 0)
+            total_pixels = mask.size
+            porosity = (pore_pixels / total_pixels) * 100
+
+            self.status_bar.set_status(
+                f"预览: 面孔率={porosity:.2f}% 像素={pore_pixels}",
+                COLORS['accent']
+            )
+
+        except Exception as e:
+            messagebox.showerror("预览错误", str(e))
 
     # ============ 事件处理 ============
 
@@ -283,13 +533,15 @@ class PorosityGUI:
             self.path_var.set(f"已选择: {path}")
             self.status_bar.set_file(Path(path).name)
 
-            # 如果是单张，先显示原图
+            # 如果是单张，加载并显示原图
             if self.mode_var.get() == 'single':
                 try:
-                    img = load_image(path)
-                    self.original_viewer.show_image(img)
+                    self.original_image = load_image(path)
+                    self.original_image_hsv = cv2.cvtColor(self.original_image, cv2.COLOR_BGR2HSV)
+                    self.original_viewer.show_image(self.original_image)
                     self.annotated_viewer.clear()
                     self._clear_results()
+                    self._clear_samples()
                 except Exception:
                     pass
 
@@ -539,6 +791,7 @@ class PorosityGUI:
         self.watershed_var.set(False)
 
         self.config = default_config
+        self._clear_samples()
         messagebox.showinfo("提示", "参数已重置为默认值！")
 
     def _save_results(self):
