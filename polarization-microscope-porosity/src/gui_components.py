@@ -12,7 +12,6 @@ import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
 import cv2
-import numpy as np
 
 
 # ============ 配色常量 ============
@@ -140,9 +139,9 @@ class ResultCard(tk.Frame):
                                       fg=value_color, font=('Microsoft YaHei', font_size, 'bold'))
         self.value_widget.pack()
 
-    def set_value(self, value, unit=""):
+    def set_value(self, value):
         """更新数值"""
-        self.value_widget.config(text=f"{value}{unit}")
+        self.value_widget.config(text=str(value))
 
 
 class ParameterSlider(tk.Frame):

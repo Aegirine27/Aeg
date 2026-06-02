@@ -15,14 +15,13 @@ import threading
 import json
 import csv
 import time
-import cv2
-import numpy as np
+import types
 
 from .gui_components import (
     COLORS, ImageViewer, ResultCard, ParameterSlider,
     CustomButton, StatusBar
 )
-from .utils import load_config
+from .utils import load_config, load_image, save_image
 from .preprocessing import ImagePreprocessor
 from .threshold_segment import ThresholdSegmenter
 from .watershed_segment import WatershedSegmenter
@@ -45,7 +44,6 @@ class PorosityGUI:
         # 当前结果缓存
         self.current_result = None
         self.batch_results = []
-        self.input_mode = 'single'  # 'single' or 'batch'
         self.selected_path = None
 
         # 创建主窗口
@@ -66,13 +64,14 @@ class PorosityGUI:
     def _init_analyzer(self):
         """初始化分析器"""
         try:
-            self.analyzer = type('Analyzer', (), {})()
-            self.analyzer.config = self.config
-            self.analyzer.preprocessor = ImagePreprocessor(self.config)
-            self.analyzer.thresh_segmenter = ThresholdSegmenter(self.config)
-            self.analyzer.watershed_segmenter = WatershedSegmenter(self.config)
-            self.analyzer.calculator = PorosityCalculator(self.config)
-            self.analyzer.visualizer = ResultVisualizer(self.config)
+            self.analyzer = types.SimpleNamespace(
+                config=self.config,
+                preprocessor=ImagePreprocessor(self.config),
+                thresh_segmenter=ThresholdSegmenter(self.config),
+                watershed_segmenter=WatershedSegmenter(self.config),
+                calculator=PorosityCalculator(self.config),
+                visualizer=ResultVisualizer(self.config),
+            )
         except Exception as e:
             messagebox.showerror("初始化错误", f"分析器初始化失败:\n{e}")
 
@@ -261,9 +260,7 @@ class PorosityGUI:
 
     def _on_mode_change(self):
         """切换单张/批量模式"""
-        mode = self.mode_var.get()
-        self.input_mode = mode
-        if mode == 'single':
+        if self.mode_var.get() == 'single':
             self.select_btn.config(text="选择文件")
         else:
             self.select_btn.config(text="选择文件夹")
@@ -272,7 +269,7 @@ class PorosityGUI:
 
     def _select_file(self):
         """选择文件或文件夹"""
-        if self.input_mode == 'single':
+        if self.mode_var.get() == 'single':
             path = filedialog.askopenfilename(
                 title="选择显微镜照片",
                 filetypes=[("图像文件", "*.jpg *.jpeg *.tif *.tiff *.png *.bmp"),
@@ -287,15 +284,13 @@ class PorosityGUI:
             self.status_bar.set_file(Path(path).name)
 
             # 如果是单张，先显示原图
-            if self.input_mode == 'single':
+            if self.mode_var.get() == 'single':
                 try:
-                    import cv2
-                    img = cv2.imread(path)
-                    if img is not None:
-                        self.original_viewer.show_image(img)
-                        self.annotated_viewer.clear()
-                        self._clear_results()
-                except Exception as e:
+                    img = load_image(path)
+                    self.original_viewer.show_image(img)
+                    self.annotated_viewer.clear()
+                    self._clear_results()
+                except Exception:
                     pass
 
     def _start_analysis(self):
@@ -320,7 +315,7 @@ class PorosityGUI:
     def _analyze_worker(self):
         """后台分析线程"""
         try:
-            if self.input_mode == 'single':
+            if self.mode_var.get() == 'single':
                 self._analyze_single()
             else:
                 self._analyze_batch()
@@ -329,9 +324,6 @@ class PorosityGUI:
 
     def _analyze_single(self):
         """单张分析"""
-        import cv2
-        from .utils import load_image
-
         path = self.selected_path
         use_watershed = self.watershed_var.get()
 
@@ -375,10 +367,8 @@ class PorosityGUI:
 
     def _analyze_batch(self):
         """批量分析"""
-        from pathlib import Path
-
         input_dir = Path(self.selected_path)
-        output_dir = Path(self.selected_path) / 'results'
+        output_dir = input_dir / 'results'
         use_watershed = self.watershed_var.get()
 
         # 收集图像
@@ -395,15 +385,11 @@ class PorosityGUI:
 
         for i, img_path in enumerate(image_files):
             # 更新进度
-            self.root.after(0, lambda idx=i+1, t=total, name=img_path.name:
-                            self.status_bar.set_progress(idx, t) or
-                            self.status_bar.set_file(name))
+            self._update_progress(i + 1, total, img_path.name)
 
             try:
                 self._init_analyzer()
-                original = cv2.imread(str(img_path))
-                if original is None:
-                    continue
+                original = load_image(str(img_path))
 
                 processed = self.analyzer.preprocessor.process(original)
                 thresh_result = self.analyzer.thresh_segmenter.segment(processed)
@@ -424,14 +410,8 @@ class PorosityGUI:
         # 保存汇总
         if self.batch_results:
             output_dir.mkdir(exist_ok=True)
-            with open(output_dir / 'summary.json', 'w', encoding='utf-8') as f:
-                json.dump(self.batch_results, f, ensure_ascii=False, indent=2)
-
-            with open(output_dir / 'summary.csv', 'w', newline='', encoding='utf-8-sig') as f:
-                if self.batch_results:
-                    writer = csv.DictWriter(f, fieldnames=self.batch_results[0].keys())
-                    writer.writeheader()
-                    writer.writerows(self.batch_results)
+            self._write_json(output_dir / 'summary.json', self.batch_results)
+            self._write_csv(output_dir / 'summary.csv', self.batch_results)
 
         self.root.after(0, self._update_batch_result)
 
@@ -498,6 +478,28 @@ class PorosityGUI:
         self.status_bar.set_status("分析失败", COLORS['danger'])
         messagebox.showerror("分析错误", f"处理过程中出现错误:\n{error_msg}")
 
+    def _update_progress(self, current, total, name):
+        """更新进度条（从后台线程安全调用）"""
+        self.root.after(0, lambda: (
+            self.status_bar.set_progress(current, total),
+            self.status_bar.set_file(name)
+        ))
+
+    def _write_json(self, path, data):
+        """写入 JSON 文件"""
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+    def _write_csv(self, path, data):
+        """写入 CSV 文件"""
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        with open(path, 'w', newline='', encoding='utf-8-sig') as f:
+            if data:
+                writer = csv.DictWriter(f, fieldnames=data[0].keys())
+                writer.writeheader()
+                writer.writerows(data)
+
     def _clear_results(self):
         """清空结果显示"""
         self.porosity_card.set_value("--")
@@ -553,27 +555,17 @@ class PorosityGUI:
         output_dir.mkdir(parents=True, exist_ok=True)
 
         try:
-            if self.input_mode == 'single' and self.current_result:
+            if self.mode_var.get() == 'single' and self.current_result:
                 result = self.current_result
-                from .utils import save_image
 
                 save_image(result['annotated'], output_dir / f"{result['filename']}_annotated.png")
                 save_image(result['overlay'], output_dir / f"{result['filename']}_overlay.png")
                 save_image(result['mask'], output_dir / f"{result['filename']}_mask.png")
+                self._write_json(output_dir / f"{result['filename']}_stats.json", result['stats'])
 
-                stats = result['stats']
-                with open(output_dir / f"{result['filename']}_stats.json", 'w', encoding='utf-8') as f:
-                    json.dump(stats, f, ensure_ascii=False, indent=2)
-
-            elif self.input_mode == 'batch' and self.batch_results:
-                with open(output_dir / 'summary.json', 'w', encoding='utf-8') as f:
-                    json.dump(self.batch_results, f, ensure_ascii=False, indent=2)
-
-                with open(output_dir / 'summary.csv', 'w', newline='', encoding='utf-8-sig') as f:
-                    if self.batch_results:
-                        writer = csv.DictWriter(f, fieldnames=self.batch_results[0].keys())
-                        writer.writeheader()
-                        writer.writerows(self.batch_results)
+            elif self.mode_var.get() == 'batch' and self.batch_results:
+                self._write_json(output_dir / 'summary.json', self.batch_results)
+                self._write_csv(output_dir / 'summary.csv', self.batch_results)
 
             messagebox.showinfo("完成", f"结果已保存到:\n{output_dir}")
         except Exception as e:
@@ -594,10 +586,7 @@ class PorosityGUI:
             return
 
         try:
-            with open(path, 'w', newline='', encoding='utf-8-sig') as f:
-                writer = csv.DictWriter(f, fieldnames=self.batch_results[0].keys())
-                writer.writeheader()
-                writer.writerows(self.batch_results)
+            self._write_csv(path, self.batch_results)
             messagebox.showinfo("完成", f"CSV 已导出到:\n{path}")
         except Exception as e:
             messagebox.showerror("导出失败", str(e))
