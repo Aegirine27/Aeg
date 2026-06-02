@@ -18,6 +18,18 @@ import time
 import types
 import cv2
 import numpy as np
+import traceback
+import sys
+
+# 设置日志文件
+log_file = Path('debug.log')
+def log(msg):
+    """写入日志"""
+    with open(log_file, 'a', encoding='utf-8') as f:
+        f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {msg}\n")
+
+log("="*50)
+log("程序启动")
 
 from .gui_components import (
     COLORS, ImageViewer, ResultCard, ParameterSlider,
@@ -613,6 +625,7 @@ class PorosityGUI:
 
             # 如果是单张，加载并显示原图
             if self.mode_var.get() == 'single':
+                log(f"尝试加载图像: {path}")
                 try:
                     self.original_image = load_image(path)
                     self.original_image_hsv = cv2.cvtColor(self.original_image, cv2.COLOR_BGR2HSV)
@@ -621,8 +634,12 @@ class PorosityGUI:
                     self._clear_results()
                     self._clear_samples()
                     self.status_bar.set_status("图像已加载，可调整阈值或取色", COLORS['success'])
+                    log(f"图像加载成功: {self.original_image.shape}")
                 except Exception as e:
-                    messagebox.showerror("加载错误", f"无法加载图像:\n{e}")
+                    error_msg = f"无法加载图像:\n{e}"
+                    log(f"图像加载失败: {error_msg}")
+                    log(traceback.format_exc())
+                    messagebox.showerror("加载错误", error_msg)
                     self.original_image = None
                     self.original_image_hsv = None
 
