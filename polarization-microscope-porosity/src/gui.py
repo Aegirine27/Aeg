@@ -441,7 +441,8 @@ class PorosityGUI:
             return
 
         self.pick_mode = True
-        self.pick_btn.config(text="取色中...", style='primary')
+        self.pick_btn.config(text="取色中...")
+        self.pick_btn.set_style('primary')
         self.status_bar.set_status("请点击原图上的蓝色孔隙区域", COLORS['warning'])
         messagebox.showinfo("取色提示", "请点击原图上的蓝色孔隙区域\n可以点击多个位置取平均")
 
@@ -473,7 +474,8 @@ class PorosityGUI:
         if len(self.sampled_colors) >= 5:
             self._apply_sampled_threshold()
             self.pick_mode = False
-            self.pick_btn.config(text="开始取色", style='secondary')
+            self.pick_btn.config(text="开始取色")
+            self.pick_btn.set_style('secondary')
             messagebox.showinfo("取色完成", "已自动应用5个取样点到阈值")
 
     def _apply_sampled_threshold(self):
@@ -517,7 +519,8 @@ class PorosityGUI:
         self.sampled_colors = []
         self.sample_label.config(text="已取样: 0 个")
         self.pick_mode = False
-        self.pick_btn.config(text="开始取色", style='secondary')
+        self.pick_btn.config(text="开始取色")
+        self.pick_btn.set_style('secondary')
         self.status_bar.set_status("取样已清空", COLORS['text_secondary'])
 
     def _preview_threshold(self):

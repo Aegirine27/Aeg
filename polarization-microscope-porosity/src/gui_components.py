@@ -234,26 +234,36 @@ class CustomButton(tk.Button):
     自定义样式按钮
     """
 
+    STYLES = {
+        'primary': {'bg': COLORS['accent'], 'fg': 'white', 'activebackground': COLORS['hover']},
+        'secondary': {'bg': COLORS['bg_panel'], 'fg': COLORS['text'], 'activebackground': COLORS['border']},
+        'success': {'bg': COLORS['success'], 'fg': 'white', 'activebackground': '#229954'},
+        'danger': {'bg': COLORS['danger'], 'fg': 'white', 'activebackground': '#C0392B'},
+    }
+
     def __init__(self, parent, text="按钮", style='primary', command=None, **kwargs):
         """
         style: 'primary' | 'secondary' | 'success' | 'danger'
         """
-        styles = {
-            'primary': {'bg': COLORS['accent'], 'fg': 'white', 'activebg': COLORS['hover']},
-            'secondary': {'bg': COLORS['bg_panel'], 'fg': COLORS['text'], 'activebg': COLORS['border']},
-            'success': {'bg': COLORS['success'], 'fg': 'white', 'activebg': '#229954'},
-            'danger': {'bg': COLORS['danger'], 'fg': 'white', 'activebg': '#C0392B'},
-        }
-
-        style_cfg = styles.get(style, styles['primary'])
+        style_cfg = self.STYLES.get(style, self.STYLES['primary'])
 
         super().__init__(parent, text=text, command=command,
                          font=('Microsoft YaHei', 10),
                          bg=style_cfg['bg'], fg=style_cfg['fg'],
-                         activebackground=style_cfg['activebg'],
+                         activebackground=style_cfg['activebackground'],
                          activeforeground='white',
                          relief='flat', cursor='hand2',
                          padx=15, pady=5, **kwargs)
+
+    def set_style(self, style):
+        """修改按钮样式（tk.Button不支持config(style=...)）"""
+        style_cfg = self.STYLES.get(style, self.STYLES['primary'])
+        self.config(
+            bg=style_cfg['bg'],
+            fg=style_cfg['fg'],
+            activebackground=style_cfg['activebackground'],
+            activeforeground='white'
+        )
 
 
 class StatusBar(tk.Frame):

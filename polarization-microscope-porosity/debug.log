@@ -1,0 +1,17 @@
+2026-06-02 18:26:12 - ==================================================
+2026-06-02 18:26:12 - 程序启动
+2026-06-02 18:26:17 - 尝试加载图像: D:/AI/Test/N6-5-(-)10X.jpg
+2026-06-02 18:26:18 - 图像加载失败: 无法加载图像:
+unknown option "-style"
+2026-06-02 18:26:18 - Traceback (most recent call last):
+  File "D:\AI\Aeg for github\polarization-microscope-porosity\src\gui.py", line 635, in _select_file
+    self._clear_samples()
+  File "D:\AI\Aeg for github\polarization-microscope-porosity\src\gui.py", line 520, in _clear_samples
+    self.pick_btn.config(text="开始取色", style='secondary')
+  File "C:\Users\86384\AppData\Local\Programs\Python\Python311\Lib\tkinter\__init__.py", line 1721, in configure
+    return self._configure('configure', cnf, kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\86384\AppData\Local\Programs\Python\Python311\Lib\tkinter\__init__.py", line 1711, in _configure
+    self.tk.call(_flatten((self._w, cmd)) + self._options(cnf))
+_tkinter.TclError: unknown option "-style"
+
