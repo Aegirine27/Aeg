@@ -15,3 +15,7 @@ unknown option "-style"
     self.tk.call(_flatten((self._w, cmd)) + self._options(cnf))
 _tkinter.TclError: unknown option "-style"
 
+2026-06-02 18:29:40 - ==================================================
+2026-06-02 18:29:40 - 程序启动
+2026-06-02 18:29:47 - 尝试加载图像: D:/AI/Test/N6-5-(-)10X.jpg
+2026-06-02 18:29:47 - 图像加载成功: (3600, 4800, 3)

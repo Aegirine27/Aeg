@@ -525,12 +525,15 @@ class PorosityGUI:
 
     def _preview_threshold(self):
         """实时预览当前阈值的分割效果（使用与正式分析相同的预处理流程）"""
+        log("_preview_threshold 开始执行")
         if self.original_image is None:
+            log("original_image 为 None，跳过")
             return
 
         try:
             # 先更新配置（确保阈值是最新的）
             self._update_config_from_ui()
+            log("配置已更新")
 
             # 使用与正式分析相同的预处理流程
             preprocessor = ImagePreprocessor(self.config)
@@ -574,6 +577,7 @@ class PorosityGUI:
             annotated[mask > 0] = [255, 0, 0]  # BGR蓝色
 
             # 显示预览
+            log(f"显示预览图像: {annotated.shape}, 面孔率={porosity:.2f}%")
             self.annotated_viewer.show_image(annotated)
 
             # 计算并显示预览面孔率
@@ -585,9 +589,12 @@ class PorosityGUI:
                 f"预览: 面孔率={porosity:.2f}% 像素={pore_pixels}",
                 COLORS['accent']
             )
+            log("预览完成")
 
         except Exception as e:
             import traceback
+            tb = traceback.format_exc()
+            log(f"预览错误: {e}\n{tb}")
             traceback.print_exc()
             self.status_bar.set_status(f"预览错误: {str(e)[:50]}", COLORS['danger'])
 
@@ -928,6 +935,7 @@ class PorosityGUI:
 
     def _on_param_changed(self):
         """参数改变时实时预览（防抖）"""
+        log(f"_on_param_changed 被调用, original_image={self.original_image is not None}")
         if self.original_image is None:
             self.status_bar.set_status("请先选择图像", COLORS['warning'])
             return
@@ -941,6 +949,7 @@ class PorosityGUI:
 
         # 延迟200ms后预览，避免滑动时频繁计算
         self._preview_after_id = self.root.after(200, self._preview_threshold)
+        log("已设置200ms后预览")
 
     def _update_single_result(self):
         """更新单张分析结果到 UI"""
