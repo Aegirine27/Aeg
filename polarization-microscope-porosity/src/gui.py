@@ -576,14 +576,14 @@ class PorosityGUI:
             annotated = np.ones_like(self.original_image) * 255
             annotated[mask > 0] = [255, 0, 0]  # BGR蓝色
 
-            # 显示预览
-            log(f"显示预览图像: {annotated.shape}, 面孔率={porosity:.2f}%")
-            self.annotated_viewer.show_image(annotated)
-
             # 计算并显示预览面孔率
             pore_pixels = np.sum(mask > 0)
             total_pixels = mask.size
             porosity = (pore_pixels / total_pixels) * 100
+
+            # 显示预览
+            log(f"显示预览图像: {annotated.shape}, 面孔率={porosity:.2f}%")
+            self.annotated_viewer.show_image(annotated)
 
             self.status_bar.set_status(
                 f"预览: 面孔率={porosity:.2f}% 像素={pore_pixels}",

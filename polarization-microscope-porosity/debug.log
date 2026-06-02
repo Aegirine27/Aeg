@@ -19,3 +19,119 @@ _tkinter.TclError: unknown option "-style"
 2026-06-02 18:29:40 - 程序启动
 2026-06-02 18:29:47 - 尝试加载图像: D:/AI/Test/N6-5-(-)10X.jpg
 2026-06-02 18:29:47 - 图像加载成功: (3600, 4800, 3)
+2026-06-02 18:37:11 - ==================================================
+2026-06-02 18:37:11 - 程序启动
+2026-06-02 18:37:12 - _on_param_changed 被调用, original_image=False
+2026-06-02 18:37:12 - _on_param_changed 被调用, original_image=False
+2026-06-02 18:37:12 - _on_param_changed 被调用, original_image=False
+2026-06-02 18:37:16 - 尝试加载图像: D:/AI/Test/N6-5-(-)10X.jpg
+2026-06-02 18:37:16 - 图像加载成功: (3600, 4800, 3)
+2026-06-02 18:37:19 - _preview_threshold 开始执行
+2026-06-02 18:37:19 - 配置已更新
+2026-06-02 18:37:20 - 预览错误: cannot access local variable 'porosity' where it is not associated with a value
+Traceback (most recent call last):
+  File "D:\AI\Aeg for github\polarization-microscope-porosity\src\gui.py", line 580, in _preview_threshold
+    log(f"显示预览图像: {annotated.shape}, 面孔率={porosity:.2f}%")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'porosity' where it is not associated with a value
+
+2026-06-02 18:37:20 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:37:20 - 已设置200ms后预览
+2026-06-02 18:37:20 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:37:20 - 已设置200ms后预览
+2026-06-02 18:37:20 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:37:20 - 已设置200ms后预览
+2026-06-02 18:37:20 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:37:20 - 已设置200ms后预览
+2026-06-02 18:37:20 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:37:20 - 已设置200ms后预览
+2026-06-02 18:37:20 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:37:20 - 已设置200ms后预览
+2026-06-02 18:37:20 - _preview_threshold 开始执行
+2026-06-02 18:37:20 - 配置已更新
+2026-06-02 18:37:21 - 预览错误: cannot access local variable 'porosity' where it is not associated with a value
+Traceback (most recent call last):
+  File "D:\AI\Aeg for github\polarization-microscope-porosity\src\gui.py", line 580, in _preview_threshold
+    log(f"显示预览图像: {annotated.shape}, 面孔率={porosity:.2f}%")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'porosity' where it is not associated with a value
+
+2026-06-02 18:37:31 - _preview_threshold 开始执行
+2026-06-02 18:37:31 - 配置已更新
+2026-06-02 18:37:32 - 预览错误: cannot access local variable 'porosity' where it is not associated with a value
+Traceback (most recent call last):
+  File "D:\AI\Aeg for github\polarization-microscope-porosity\src\gui.py", line 580, in _preview_threshold
+    log(f"显示预览图像: {annotated.shape}, 面孔率={porosity:.2f}%")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'porosity' where it is not associated with a value
+
+2026-06-02 18:37:32 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:37:32 - 已设置200ms后预览
+2026-06-02 18:37:32 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:37:32 - 已设置200ms后预览
+2026-06-02 18:37:32 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:37:32 - 已设置200ms后预览
+2026-06-02 18:37:32 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:37:32 - 已设置200ms后预览
+2026-06-02 18:37:32 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:37:32 - 已设置200ms后预览
+2026-06-02 18:37:32 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:37:32 - 已设置200ms后预览
+2026-06-02 18:37:32 - _preview_threshold 开始执行
+2026-06-02 18:37:32 - 配置已更新
+2026-06-02 18:37:33 - 预览错误: cannot access local variable 'porosity' where it is not associated with a value
+Traceback (most recent call last):
+  File "D:\AI\Aeg for github\polarization-microscope-porosity\src\gui.py", line 580, in _preview_threshold
+    log(f"显示预览图像: {annotated.shape}, 面孔率={porosity:.2f}%")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'porosity' where it is not associated with a value
+
+2026-06-02 18:37:34 - _preview_threshold 开始执行
+2026-06-02 18:37:34 - 配置已更新
+2026-06-02 18:37:35 - 预览错误: cannot access local variable 'porosity' where it is not associated with a value
+Traceback (most recent call last):
+  File "D:\AI\Aeg for github\polarization-microscope-porosity\src\gui.py", line 580, in _preview_threshold
+    log(f"显示预览图像: {annotated.shape}, 面孔率={porosity:.2f}%")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'porosity' where it is not associated with a value
+
+2026-06-02 18:37:40 - _preview_threshold 开始执行
+2026-06-02 18:37:40 - 配置已更新
+2026-06-02 18:37:41 - 预览错误: cannot access local variable 'porosity' where it is not associated with a value
+Traceback (most recent call last):
+  File "D:\AI\Aeg for github\polarization-microscope-porosity\src\gui.py", line 580, in _preview_threshold
+    log(f"显示预览图像: {annotated.shape}, 面孔率={porosity:.2f}%")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'porosity' where it is not associated with a value
+
+2026-06-02 18:37:46 - _preview_threshold 开始执行
+2026-06-02 18:37:46 - 配置已更新
+2026-06-02 18:37:46 - 预览错误: cannot access local variable 'porosity' where it is not associated with a value
+Traceback (most recent call last):
+  File "D:\AI\Aeg for github\polarization-microscope-porosity\src\gui.py", line 580, in _preview_threshold
+    log(f"显示预览图像: {annotated.shape}, 面孔率={porosity:.2f}%")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'porosity' where it is not associated with a value
+
+2026-06-02 18:37:46 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:37:46 - 已设置200ms后预览
+2026-06-02 18:37:46 - _on_param_changed 被调用, original_image=True
+2026-06-02 18:37:46 - 已设置200ms后预览
+2026-06-02 18:37:47 - _preview_threshold 开始执行
+2026-06-02 18:37:47 - 配置已更新
+2026-06-02 18:37:47 - 预览错误: cannot access local variable 'porosity' where it is not associated with a value
+Traceback (most recent call last):
+  File "D:\AI\Aeg for github\polarization-microscope-porosity\src\gui.py", line 580, in _preview_threshold
+    log(f"显示预览图像: {annotated.shape}, 面孔率={porosity:.2f}%")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'porosity' where it is not associated with a value
+
+2026-06-02 18:37:48 - _preview_threshold 开始执行
+2026-06-02 18:37:48 - 配置已更新
+2026-06-02 18:37:49 - 预览错误: cannot access local variable 'porosity' where it is not associated with a value
+Traceback (most recent call last):
+  File "D:\AI\Aeg for github\polarization-microscope-porosity\src\gui.py", line 580, in _preview_threshold
+    log(f"显示预览图像: {annotated.shape}, 面孔率={porosity:.2f}%")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'porosity' where it is not associated with a value
+
