@@ -509,12 +509,19 @@ class PorosityGUI:
         self.status_bar.set_status("取样已清空", COLORS['text_secondary'])
 
     def _preview_threshold(self):
-        """实时预览当前阈值的分割效果"""
-        if self.original_image is None or self.original_image_hsv is None:
-            messagebox.showwarning("提示", "请先选择图像！")
+        """实时预览当前阈值的分割效果（使用与正式分析相同的预处理流程）"""
+        if self.original_image is None:
             return
 
         try:
+            # 先更新配置（确保阈值是最新的）
+            self._update_config_from_ui()
+
+            # 使用与正式分析相同的预处理流程
+            preprocessor = ImagePreprocessor(self.config)
+            processed = preprocessor.process(self.original_image)
+            hsv = processed['hsv']
+
             # 使用当前UI的阈值参数进行分割
             h_l = self.h_lower.get()
             h_u = self.h_upper.get()
@@ -527,13 +534,25 @@ class PorosityGUI:
             upper = np.array([h_u, s_u, v_u])
 
             # 执行阈值分割
-            mask = cv2.inRange(self.original_image_hsv, lower, upper)
+            mask = cv2.inRange(hsv, lower, upper)
 
-            # 形态学操作
-            open_k = np.ones((3, 3), np.uint8)
-            close_k = np.ones((5, 5), np.uint8)
-            mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, open_k, iterations=2)
-            mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, close_k, iterations=2)
+            # 形态学操作（与配置一致）
+            morph_cfg = self.config.get('threshold_segmentation', {}).get('morphological_operations', {})
+            open_k = np.ones(tuple(morph_cfg.get('open_kernel', [3, 3])), np.uint8)
+            close_k = np.ones(tuple(morph_cfg.get('close_kernel', [5, 5])), np.uint8)
+            iterations = morph_cfg.get('iterations', 2)
+            mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, open_k, iterations=iterations)
+            mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, close_k, iterations=iterations)
+
+            # 应用最小孔隙面积过滤
+            min_area = self.min_area_slider.get()
+            if min_area > 0:
+                num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(mask, connectivity=8)
+                filtered_mask = np.zeros_like(mask)
+                for i in range(1, num_labels):
+                    if stats[i, cv2.CC_STAT_AREA] >= min_area:
+                        filtered_mask[labels == i] = 255
+                mask = filtered_mask
 
             # 生成标注图像
             annotated = np.ones_like(self.original_image) * 255
@@ -553,7 +572,9 @@ class PorosityGUI:
             )
 
         except Exception as e:
-            messagebox.showerror("预览错误", str(e))
+            import traceback
+            traceback.print_exc()
+            self.status_bar.set_status(f"预览错误: {str(e)[:50]}", COLORS['danger'])
 
     # ============ 事件处理 ============
 
@@ -591,8 +612,11 @@ class PorosityGUI:
                     self.annotated_viewer.clear()
                     self._clear_results()
                     self._clear_samples()
-                except Exception:
-                    pass
+                    self.status_bar.set_status("图像已加载，可调整阈值或取色", COLORS['success'])
+                except Exception as e:
+                    messagebox.showerror("加载错误", f"无法加载图像:\n{e}")
+                    self.original_image = None
+                    self.original_image_hsv = None
 
     def _start_analysis(self):
         """开始分析"""
@@ -628,13 +652,18 @@ class PorosityGUI:
         path = self.selected_path
         use_watershed = self.watershed_var.get()
 
+        # 检查图像是否已加载
+        if self.original_image is None:
+            self.root.after(0, lambda: messagebox.showerror("错误", "请先选择图像"))
+            return
+
         # 重新初始化分析器（使用最新配置）
         self._init_analyzer()
 
         start = time.time()
 
-        # 执行分析
-        original = load_image(path)
+        # 使用已加载的图像进行分析（避免重复加载，确保与预览一致）
+        original = self.original_image
         processed = self.analyzer.preprocessor.process(original)
         thresh_result = self.analyzer.thresh_segmenter.segment(processed)
         mask = thresh_result['mask']
@@ -715,30 +744,6 @@ class PorosityGUI:
             self._write_csv(output_dir / 'summary.csv', self.batch_results)
 
         self.root.after(0, self._update_batch_result)
-
-    def _update_single_result(self):
-        """更新单张分析结果到 UI"""
-        result = self.current_result
-        stats = result['stats']
-
-        # 显示图像
-        self.original_viewer.show_image(result['original'])
-        self.annotated_viewer.show_image(result['annotated'])
-
-        # 更新数值
-        self.porosity_card.set_value(f"{stats['porosity_percent']:.4f}")
-        self.count_card.set_value(str(stats['pore_count']))
-        self.avg_area_card.set_value(f"{stats['avg_pore_area']:.2f}")
-        self.crack_card.set_value(str(stats.get('crack_count', 0)))
-        self.time_card.set_value(f"{stats['processing_time']}")
-
-        # 启用按钮
-        self.analyze_btn.config(state='normal')
-        self.save_btn.config(state='normal')
-        self.export_btn.config(state='disabled')  # 单张不启用导出CSV
-
-        self.status_bar.set_status("分析完成", COLORS['success'])
-        self.status_bar.set_progress(100)
 
     def _update_batch_result(self):
         """更新批量分析结果到 UI"""
@@ -896,14 +901,45 @@ class PorosityGUI:
     def _on_param_changed(self):
         """参数改变时实时预览（防抖）"""
         if self.original_image is None:
+            self.status_bar.set_status("请先选择图像", COLORS['warning'])
             return
 
         # 取消之前的定时器
         if hasattr(self, '_preview_after_id'):
-            self.root.after_cancel(self._preview_after_id)
+            try:
+                self.root.after_cancel(self._preview_after_id)
+            except:
+                pass
 
         # 延迟200ms后预览，避免滑动时频繁计算
         self._preview_after_id = self.root.after(200, self._preview_threshold)
+
+    def _update_single_result(self):
+        """更新单张分析结果到 UI"""
+        result = self.current_result
+        if result is None:
+            return
+
+        stats = result['stats']
+
+        # 显示图像
+        self.original_viewer.show_image(result['original'])
+        self.annotated_viewer.show_image(result['annotated'])
+
+        # 更新数值
+        self.porosity_card.set_value(f"{stats['porosity_percent']:.4f}")
+        self.count_card.set_value(str(stats['pore_count']))
+        self.avg_area_card.set_value(f"{stats['avg_pore_area']:.2f}")
+        self.crack_card.set_value(str(stats.get('crack_count', 0)))
+        self.time_card.set_value(f"{stats['processing_time']}")
+
+        # 启用按钮
+        self.analyze_btn.config(state='normal')
+        self.save_btn.config(state='normal')
+        self.export_btn.config(state='disabled')  # 单张不启用导出CSV
+
+        self.status_bar.set_status("分析完成", COLORS['success'])
+        self.status_bar.set_progress(100)
 
     def run(self):
         """启动 GUI"""
