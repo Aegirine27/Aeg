@@ -443,7 +443,7 @@ class PorosityGUI:
         self.clear_sample_btn.pack(fill='x')
 
         # --- 标注修正面板（深度学习训练用） ---
-        self._build_annotation_panel(left_frame)
+        self._build_annotation_panel(parent)
 
     def _build_annotation_panel(self, parent):
         """构建标注修正面板"""
