@@ -46,7 +46,8 @@ def get_model_summary(model, input_size=(1, 3, 512, 512)):
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-    print(f"模型架构: U-Net + {model.encoder.name}")
+    encoder_name = getattr(getattr(model, 'encoder', None), 'name', 'unknown')
+    print(f"模型架构: U-Net + {encoder_name}")
     print(f"总参数量: {total_params:,}")
     print(f"可训练参数量: {trainable_params:,}")
     print(f"模型大小: ~{total_params * 4 / 1024 / 1024:.1f}MB (float32)")
