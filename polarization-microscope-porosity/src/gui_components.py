@@ -38,6 +38,7 @@ class ImageViewer(tk.Canvas):
         - 自适应缩放显示（保持长宽比）
         - 支持 OpenCV BGR 图像直接传入
         - 双击可放大查看
+        - 支持画笔标注模式（用于修正mask）
     """
 
     def __init__(self, parent, title="图像", width=400, height=400, click_callback=None, **kwargs):
@@ -54,33 +55,142 @@ class ImageViewer(tk.Canvas):
         self.display_offset = (0, 0)  # 图像在画布中的偏移
         self.display_scale = 1.0      # 图像缩放比例
 
+        # 标注模式
+        self.annotate_mode = False    # 是否处于标注模式
+        self.brush_size = 10          # 画笔大小
+        self.annotation_color = 255   # 标注颜色（255=前景白色，0=背景黑色）
+        self.annotation_mask = None   # 标注mask (H, W)
+        self._drawing = False         # 是否正在绘制
+        self._draw_items = []         # 画布上的绘制元素ID
+
         # 标题文字
         self.create_text(width//2, height//2, text=f"{title}\n(暂无图像)",
                          fill=COLORS['text_secondary'], font=('Microsoft YaHei', 12),
                          justify='center')
 
-        # 绑定鼠标点击事件
+        # 绑定鼠标事件
         if self.click_callback:
             self.bind('<Button-1>', self._on_click)
-            self.config(cursor='crosshair')
+        self.bind('<Button-1>', self._on_brush_down, add='+')
+        self.bind('<B1-Motion>', self._on_brush_drag)
+        self.bind('<ButtonRelease-1>', self._on_brush_up)
 
-    def _on_click(self, event):
-        """处理鼠标点击，将画布坐标转换为图像坐标"""
-        if self.current_image is None or self.click_callback is None:
-            return
+    def _get_image_coords(self, event_x, event_y):
+        """将画布坐标转换为图像坐标"""
+        if self.current_image is None:
+            return None, None
 
-        # 计算图像在画布中的实际位置
         img_w = int(self.current_image.width * self.display_scale)
         img_h = int(self.current_image.height * self.display_scale)
         offset_x = (self.canvas_width - img_w) // 2
         offset_y = (self.canvas_height - img_h) // 2
 
-        # 检查点击是否在图像范围内
-        if offset_x <= event.x <= offset_x + img_w and offset_y <= event.y <= offset_y + img_h:
-            # 转换回原始图像坐标
-            img_x = int((event.x - offset_x) / self.display_scale)
-            img_y = int((event.y - offset_y) / self.display_scale)
+        if offset_x <= event_x <= offset_x + img_w and offset_y <= event_y <= offset_y + img_h:
+            img_x = int((event_x - offset_x) / self.display_scale)
+            img_y = int((event_y - offset_y) / self.display_scale)
+            return img_x, img_y
+        return None, None
+
+    def _on_click(self, event):
+        """处理鼠标点击，将画布坐标转换为图像坐标"""
+        img_x, img_y = self._get_image_coords(event.x, event.y)
+        if img_x is not None and self.click_callback is not None:
             self.click_callback(img_x, img_y)
+
+    def _on_brush_down(self, event):
+        """画笔按下"""
+        if not self.annotate_mode:
+            return
+        self._drawing = True
+        self._draw_brush(event.x, event.y)
+
+    def _on_brush_drag(self, event):
+        """画笔拖动"""
+        if not self.annotate_mode or not self._drawing:
+            return
+        self._draw_brush(event.x, event.y)
+
+    def _on_brush_up(self, event):
+        """画笔释放"""
+        self._drawing = False
+
+    def _draw_brush(self, canvas_x, canvas_y):
+        """在指定位置画笔画"""
+        img_x, img_y = self._get_image_coords(canvas_x, canvas_y)
+        if img_x is None:
+            return
+
+        # 在mask上绘制
+        if self.annotation_mask is not None:
+            h, w = self.annotation_mask.shape
+            if 0 <= img_x < w and 0 <= img_y < h:
+                cv2.circle(self.annotation_mask, (img_x, img_y), self.brush_size,
+                          self.annotation_color, -1)
+
+        # 在画布上绘制可视化圆点
+        color = 'white' if self.annotation_color == 255 else 'black'
+        item = self.create_oval(
+            canvas_x - self.brush_size * self.display_scale,
+            canvas_y - self.brush_size * self.display_scale,
+            canvas_x + self.brush_size * self.display_scale,
+            canvas_y + self.brush_size * self.display_scale,
+            fill=color, outline=color, stipple='gray50'
+        )
+        self._draw_items.append(item)
+
+    def set_annotate_mode(self, enabled, brush_size=10, annotation_color=255):
+        """设置标注模式
+
+        Args:
+            enabled: True=启用标注模式, False=禁用
+            brush_size: 画笔大小（像素）
+            annotation_color: 255=前景(白色), 0=背景(黑色)
+        """
+        self.annotate_mode = enabled
+        self.brush_size = brush_size
+        self.annotation_color = annotation_color
+
+        if enabled:
+            self.config(cursor='circle')
+            if self.current_image is not None:
+                h, w = self.current_image.height, self.current_image.width
+                if self.annotation_mask is None or self.annotation_mask.shape != (h, w):
+                    self.annotation_mask = np.zeros((h, w), dtype=np.uint8)
+        else:
+            self.config(cursor='' if self.click_callback else '')
+
+    def clear_annotation(self):
+        """清空标注"""
+        self.annotation_mask = None
+        for item in self._draw_items:
+            self.delete(item)
+        self._draw_items = []
+
+    def get_annotation_mask(self):
+        """获取标注mask"""
+        return self.annotation_mask
+
+    def load_annotation_mask(self, mask):
+        """加载已有mask进行修正"""
+        if self.current_image is None:
+            return
+        self.annotation_mask = mask.copy()
+        # 在画布上显示已有的标注
+        self._redraw_annotation_overlay()
+
+    def _redraw_annotation_overlay(self):
+        """重绘标注叠加层"""
+        # 清除旧的绘制元素
+        for item in self._draw_items:
+            self.delete(item)
+        self._draw_items = []
+
+        if self.annotation_mask is None or self.current_image is None:
+            return
+
+        # 这里简化处理：在下次show_image时会重新显示
+        # 实际应用中可以添加一个半透明的overlay显示
+        pass
 
     def show_image(self, cv_image):
         """
@@ -119,10 +229,16 @@ class ImageViewer(tk.Canvas):
                          fill=COLORS['primary'], font=('Microsoft YaHei', 10, 'bold'),
                          tags='title')
 
-        # 如果有取色回调，显示提示
-        if self.click_callback:
+        # 如果有取色回调或标注模式，显示提示
+        hint_text = None
+        if self.annotate_mode:
+            hint_text = "画笔标注模式"
+        elif self.click_callback:
+            hint_text = "点击图像取色"
+
+        if hint_text:
             self.create_text(self.canvas_width//2, self.canvas_height - 15,
-                             text="点击图像取色", anchor='s',
+                             text=hint_text, anchor='s',
                              fill=COLORS['accent'], font=('Microsoft YaHei', 9),
                              tags='hint')
 

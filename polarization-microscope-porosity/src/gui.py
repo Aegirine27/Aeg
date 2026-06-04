@@ -442,6 +442,100 @@ class PorosityGUI:
                                               command=self._clear_samples)
         self.clear_sample_btn.pack(fill='x')
 
+        # --- 标注修正面板（深度学习训练用） ---
+        self._build_annotation_panel(left_frame)
+
+    def _build_annotation_panel(self, parent):
+        """构建标注修正面板"""
+        anno_frame = tk.LabelFrame(parent, text=" 标注修正 (训练用) ",
+                                    bg=COLORS['bg_panel'], fg=COLORS['primary'],
+                                    font=('Microsoft YaHei', 10, 'bold'),
+                                    padx=10, pady=10)
+        anno_frame.pack(fill='x', padx=10, pady=5)
+
+        tk.Label(anno_frame, text="生成高质量训练标注",
+                 bg=COLORS['bg_panel'], fg=COLORS['text_secondary'],
+                 font=('Microsoft YaHei', 9)).pack(anchor='w')
+
+        # 标注模式开关
+        self.annotate_mode_var = tk.BooleanVar(value=False)
+        self.annotate_check = tk.Checkbutton(anno_frame, text="启用画笔标注修正",
+                                              variable=self.annotate_mode_var,
+                                              bg=COLORS['bg_panel'], fg=COLORS['text'],
+                                              font=('Microsoft YaHei', 9),
+                                              command=self._toggle_annotation_mode)
+        self.annotate_check.pack(anchor='w', pady=(3, 0))
+
+        # 画笔设置
+        brush_frame = tk.Frame(anno_frame, bg=COLORS['bg_panel'])
+        brush_frame.pack(fill='x', pady=(5, 0))
+
+        tk.Label(brush_frame, text="画笔:", bg=COLORS['bg_panel'],
+                 fg=COLORS['text'], font=('Microsoft YaHei', 9)).pack(side='left')
+        self.brush_size_var = tk.IntVar(value=10)
+        tk.Spinbox(brush_frame, from_=3, to=50, textvariable=self.brush_size_var,
+                   width=5, font=('Microsoft YaHei', 9)).pack(side='left', padx=(5, 0))
+
+        # 前景/背景选择
+        self.annotation_color_var = tk.StringVar(value='foreground')
+        tk.Radiobutton(anno_frame, text="前景(孔隙)", variable=self.annotation_color_var,
+                       value='foreground', bg=COLORS['bg_panel'], fg=COLORS['text'],
+                       font=('Microsoft YaHei', 9),
+                       command=self._set_annotation_color).pack(anchor='w')
+        tk.Radiobutton(anno_frame, text="背景(删除)", variable=self.annotation_color_var,
+                       value='background', bg=COLORS['bg_panel'], fg=COLORS['text'],
+                       font=('Microsoft YaHei', 9),
+                       command=self._set_annotation_color).pack(anchor='w')
+
+        # 操作按钮
+        anno_btn_frame = tk.Frame(anno_frame, bg=COLORS['bg_panel'])
+        anno_btn_frame.pack(fill='x', pady=(5, 0))
+
+        self.clear_anno_btn = CustomButton(anno_btn_frame, text="清空标注", style='danger',
+                                            command=self._clear_annotation)
+        self.clear_anno_btn.pack(fill='x', pady=(0, 3))
+
+        self.save_anno_btn = CustomButton(anno_btn_frame, text="保存标注", style='success',
+                                           command=self._save_annotation)
+        self.save_anno_btn.pack(fill='x')
+
+        # 初始禁用
+        self.annotate_check.config(state='disabled')
+        self.save_anno_btn.config(state='disabled')
+
+    def _toggle_annotation_mode(self):
+        """切换标注模式"""
+        enabled = self.annotate_mode_var.get()
+        color = 255 if self.annotation_color_var.get() == 'foreground' else 0
+        size = self.brush_size_var.get()
+        self.annotated_viewer.set_annotate_mode(enabled, brush_size=size, annotation_color=color)
+        self.status_bar.set_status("画笔标注" + ("开启" if enabled else "关闭"), COLORS['warning'] if enabled else COLORS['success'])
+
+    def _set_annotation_color(self):
+        """设置标注颜色"""
+        color = 255 if self.annotation_color_var.get() == 'foreground' else 0
+        size = self.brush_size_var.get()
+        if self.annotate_mode_var.get():
+            self.annotated_viewer.set_annotate_mode(True, brush_size=size, annotation_color=color)
+
+    def _clear_annotation(self):
+        """清空标注"""
+        self.annotated_viewer.clear_annotation()
+        self.status_bar.set_status("标注已清空", COLORS['text_secondary'])
+
+    def _save_annotation(self):
+        """保存标注为训练数据"""
+        mask = self.annotated_viewer.get_annotation_mask()
+        if mask is None:
+            messagebox.showwarning("提示", "没有可保存的标注")
+            return
+        output_dir = Path('data/labels')
+        output_dir.mkdir(parents=True, exist_ok=True)
+        mask_path = output_dir / f"annotated_mask_{len(list(output_dir.glob('*.png')))}.png"
+        cv2.imwrite(str(mask_path), mask)
+        self.status_bar.set_status(f"标注已保存: {mask_path.name}", COLORS['success'])
+        messagebox.showinfo("完成", f"标注已保存:\n{mask_path}")
+
     def _build_right_panel(self, parent):
         """构建右侧面板"""
         right_frame = tk.Frame(parent, bg=COLORS['bg_main'])
@@ -779,6 +873,12 @@ class PorosityGUI:
                     self.annotated_viewer.clear()
                     self._clear_results()
                     self._clear_samples()
+                    # 启用标注修正功能
+                    self.annotate_check.config(state='normal')
+                    self.save_anno_btn.config(state='normal')
+                    self.annotated_viewer.load_annotation_mask(
+                        np.zeros(self.original_image.shape[:2], dtype=np.uint8)
+                    )
                     self.status_bar.set_status("图像已加载，可调整阈值或取色", COLORS['success'])
                     log(f"图像加载成功: {self.original_image.shape}")
                 except Exception as e:
