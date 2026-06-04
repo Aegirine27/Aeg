@@ -1,5 +1,20 @@
 # 偏光显微镜面孔率识别配置文件
 
+# 分割方法选择: threshold | watershed | deep_learning
+segmentation:
+  method: "threshold"
+
+# 深度学习分割参数
+# 注意: 需要先训练并导出ONNX模型到 models/pore_segment.onnx
+deep_learning:
+  enabled: false
+  model_path: "models/pore_segment.onnx"
+  patch_size: 512
+  overlap: 128
+  confidence_threshold: 0.5
+  use_morphology: true
+  gpu: true
+
 # 图像预处理参数
 preprocessing:
   denoise:

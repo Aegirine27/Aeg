@@ -15,11 +15,14 @@ import cv2
 import numpy as np
 from scipy import ndimage
 
+from .segmentation_base import BaseSegmenter
 
-class WatershedSegmenter:
+
+class WatershedSegmenter(BaseSegmenter):
     """基于分水岭算法的孔隙分割器"""
 
     def __init__(self, config):
+        super().__init__(config)
         self.config = config.get('watershed', {})
 
     def segment(self, image_dict, initial_mask=None):

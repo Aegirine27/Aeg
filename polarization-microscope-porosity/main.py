@@ -28,10 +28,11 @@ from src.threshold_segment import ThresholdSegmenter
 from src.watershed_segment import WatershedSegmenter
 from src.area_calculation import PorosityCalculator
 from src.visualization import ResultVisualizer
+from src.segmentation_base import BaseSegmenter
 
 
 class PorosityAnalyzer:
-    """面孔率分析器 - 整合所有模块"""
+    """面孔率分析器 - 整合所有模块（支持阈值/分水岭/深度学习三种方法）"""
 
     def __init__(self, config_path="config.yaml"):
         self.config = load_config(config_path)
@@ -41,19 +42,34 @@ class PorosityAnalyzer:
         self.calculator = PorosityCalculator(self.config)
         self.visualizer = ResultVisualizer(self.config)
 
-    def analyze(self, image_path, use_watershed=False, save_intermediate=False):
+        # 深度学习分割器（延迟初始化）
+        self._dl_segmenter = None
+
+    def _get_dl_segmenter(self):
+        """懒加载深度学习分割器"""
+        if self._dl_segmenter is None:
+            from .dl_segment import DLSegmenter
+            self._dl_segmenter = DLSegmenter(self.config)
+        return self._dl_segmenter
+
+    def analyze(self, image_path, method=None, save_intermediate=False):
         """
         分析单张图像
 
         Args:
             image_path: 图像路径
-            use_watershed: 是否使用分水岭算法
+            method: 分割方法 ('threshold', 'watershed', 'deep_learning')，
+                    None时使用config中配置的方法
             save_intermediate: 是否保存中间结果
 
         Returns:
             dict: 包含所有结果的字典
         """
         start_time = time.time()
+
+        # 确定分割方法
+        if method is None:
+            method = self.config.get('segmentation', {}).get('method', 'threshold')
 
         # 1. 加载图像
         original = load_image(image_path)
@@ -62,28 +78,32 @@ class PorosityAnalyzer:
         # 2. 预处理
         processed = self.preprocessor.process(original)
 
-        # 3. 阈值分割（始终执行，作为基础）
-        thresh_result = self.thresh_segmenter.segment(processed)
-        mask = thresh_result['mask']
+        # 3. 根据方法选择分割器
+        if method == 'deep_learning':
+            segmenter = self._get_dl_segmenter()
+            seg_result = segmenter.segment(processed)
+            mask = seg_result['mask']
+        elif method == 'watershed':
+            # 分水岭需要阈值分割作为初始mask
+            thresh_result = self.thresh_segmenter.segment(processed)
+            initial_mask = thresh_result['mask']
+            ws_result = self.watershed_segmenter.segment(processed, initial_mask)
+            mask = ws_result['mask']
+        else:  # threshold (default)
+            thresh_result = self.thresh_segmenter.segment(processed)
+            mask = thresh_result['mask']
 
-        # 4. 分水岭算法（可选）
-        method = 'threshold'
-        if use_watershed:
-            watershed_result = self.watershed_segmenter.segment(processed, mask)
-            mask = watershed_result['mask']
-            method = 'watershed'
-
-        # 5. 面孔率计算
+        # 4. 面孔率计算
         stats = self.calculator.calculate(mask)
         stats['filename'] = filename
         stats['method'] = method
         stats['processing_time'] = round(time.time() - start_time, 3)
 
-        # 6. 裂缝检测
+        # 5. 裂缝检测
         crack_info = self.calculator.detect_cracks(mask)
         stats['crack_count'] = crack_info['crack_count']
 
-        # 7. 生成标注图像
+        # 6. 生成标注图像
         annotated = self.visualizer.create_annotated_image(mask)
         overlay = self.visualizer.overlay_on_original(original, mask)
 
@@ -158,7 +178,7 @@ class PorosityAnalyzer:
         }
 
 
-def process_batch(analyzer, input_dir, output_dir, use_watershed=False):
+def process_batch(analyzer, input_dir, output_dir, method='threshold'):
     """批量处理文件夹"""
     input_dir = Path(input_dir)
     output_dir = Path(output_dir)
@@ -174,11 +194,12 @@ def process_batch(analyzer, input_dir, output_dir, use_watershed=False):
         return []
 
     print(f"找到 {len(image_files)} 张图像，开始处理...")
+    print(f"分割方法: {method}")
 
     all_stats = []
     for img_path in tqdm(image_files, desc="处理进度"):
         try:
-            result = analyzer.analyze(str(img_path), use_watershed=use_watershed)
+            result = analyzer.analyze(str(img_path), method=method)
             paths = analyzer.save_results(result, output_dir)
             all_stats.append(result['stats'])
             print(f"✓ {img_path.name}: 面孔率={result['stats']['porosity_percent']:.4f}%")
@@ -257,11 +278,20 @@ def main():
     parser.add_argument('--output', '-o', default='results', help='输出目录')
     parser.add_argument('--config', '-c', default='config.yaml', help='配置文件路径')
     parser.add_argument('--batch', '-b', action='store_true', help='批量处理模式')
-    parser.add_argument('--watershed', '-w', action='store_true', help='使用分水岭算法')
+    parser.add_argument('--method', '-m', choices=['threshold', 'watershed', 'dl'],
+                        default='threshold', help='分割方法 (threshold=阈值, watershed=分水岭, dl=深度学习)')
+    parser.add_argument('--watershed', '-w', action='store_true',
+                        help='使用分水岭算法（--method watershed 的简写，已弃用）')
     parser.add_argument('--interactive', action='store_true', help='交互式阈值调参')
     parser.add_argument('--save-intermediate', action='store_true', help='保存中间结果')
 
     args = parser.parse_args()
+
+    # 兼容旧版 --watershed 参数
+    method = args.method
+    if args.watershed and args.method == 'threshold':
+        method = 'watershed'
+        print("警告: --watershed 已弃用，请使用 --method watershed")
 
     # 初始化分析器
     analyzer = PorosityAnalyzer(args.config)
@@ -271,9 +301,9 @@ def main():
         return
 
     if args.batch or Path(args.input).is_dir():
-        process_batch(analyzer, args.input, args.output, args.watershed)
+        process_batch(analyzer, args.input, args.output, method=method)
     else:
-        result = analyzer.analyze(args.input, use_watershed=args.watershed,
+        result = analyzer.analyze(args.input, method=method,
                                    save_intermediate=args.save_intermediate)
         paths = analyzer.save_results(result, args.output)
 

@@ -32,7 +32,7 @@ log("="*50)
 log("程序启动")
 
 from .gui_components import (
-    COLORS, ImageViewer, ResultCard, ParameterSlider,
+    COLORS, ImageViewer, ResultCard, ParameterSlider, RangeSlider,
     CustomButton, StatusBar
 )
 from .utils import load_config, load_image, save_image
@@ -198,41 +198,90 @@ class PorosityGUI:
                                      padx=10, pady=10)
         param_frame.pack(fill='x', padx=10, pady=5)
 
-        # 分水岭算法
-        self.watershed_var = tk.BooleanVar(value=False)
-        tk.Checkbutton(param_frame, text="启用分水岭算法", variable=self.watershed_var,
-                       bg=COLORS['bg_panel'], fg=COLORS['text'],
-                       font=('Microsoft YaHei', 9)).pack(anchor='w', pady=(0, 5))
+        # 分割方法选择
+        method_frame = tk.Frame(param_frame, bg=COLORS['bg_panel'])
+        method_frame.pack(fill='x', pady=(0, 5))
 
-        # HSV 阈值设置
-        thresh_frame = tk.LabelFrame(param_frame, text="颜色阈值 (HSV)",
+        tk.Label(method_frame, text="分割方法:", bg=COLORS['bg_panel'],
+                 fg=COLORS['text'], font=('Microsoft YaHei', 9)).pack(side='left')
+
+        self.method_var = tk.StringVar(value='threshold')
+        self.method_combo = ttk.Combobox(method_frame, textvariable=self.method_var,
+                                          values=['threshold', 'watershed', 'deep_learning'],
+                                          width=15, state='readonly')
+        self.method_combo.pack(side='left', padx=(5, 0))
+        self.method_combo.bind('<<ComboboxSelected>>', self._on_method_changed)
+
+        # DL模型状态指示
+        self.dl_status_label = tk.Label(param_frame, text="DL模型: 未使用",
+                                         bg=COLORS['bg_panel'], fg=COLORS['text_secondary'],
+                                         font=('Microsoft YaHei', 8))
+        self.dl_status_label.pack(anchor='w', pady=(0, 3))
+
+        # HSV 阈值设置面板（可折叠，默认折叠）
+        self.thresh_collapsed = True
+        thresh_frame = tk.LabelFrame(param_frame, text="",
                                       bg=COLORS['bg_panel'], fg=COLORS['text_secondary'],
                                       font=('Microsoft YaHei', 9), padx=5, pady=5)
         thresh_frame.pack(fill='x', pady=(0, 5))
 
-        # 下限
-        lower = self.config.get('threshold_segmentation', {}).get('hsv_range', {}).get('lower', [100, 50, 50])
-        self.h_lower = ParameterSlider(thresh_frame, label="H下限(色相)", from_=0, to=180, default=lower[0],
-                                        command=lambda v: self._on_param_changed())
-        self.h_lower.pack(fill='x', pady=2)
-        self.s_lower = ParameterSlider(thresh_frame, label="S下限(饱和度)", from_=0, to=255, default=lower[1],
-                                        command=lambda v: self._on_param_changed())
-        self.s_lower.pack(fill='x', pady=2)
-        self.v_lower = ParameterSlider(thresh_frame, label="V下限(亮度)", from_=0, to=255, default=lower[2],
-                                        command=lambda v: self._on_param_changed())
-        self.v_lower.pack(fill='x', pady=2)
+        # 标题栏：标题 + 折叠按钮（始终可见）
+        title_bar = tk.Frame(thresh_frame, bg=COLORS['bg_panel'])
+        title_bar.pack(fill='x', pady=(0, 3))
 
-        # 上限
+        tk.Label(title_bar, text="颜色阈值范围 (HSV)", bg=COLORS['bg_panel'],
+                 fg=COLORS['primary'], font=('Microsoft YaHei', 9, 'bold')).pack(side='left')
+
+        self.toggle_thresh_btn = tk.Button(title_bar, text="▼ 展开", bg=COLORS['bg_panel'],
+                                            fg=COLORS['accent'], font=('Microsoft YaHei', 8),
+                                            relief='flat', cursor='hand2',
+                                            command=self._toggle_thresh_panel)
+        self.toggle_thresh_btn.pack(side='right')
+
+        # 预设选择（始终可见）
+        preset_frame = tk.Frame(thresh_frame, bg=COLORS['bg_panel'])
+        preset_frame.pack(fill='x', pady=(0, 3))
+
+        tk.Label(preset_frame, text="快速选择:", bg=COLORS['bg_panel'],
+                 fg=COLORS['text'], font=('Microsoft YaHei', 9)).pack(side='left')
+
+        self.preset_var = tk.StringVar(value='蓝色树脂')
+        self.preset_combo = ttk.Combobox(preset_frame, textvariable=self.preset_var,
+                                          values=['蓝色树脂', '青色', '紫色', '绿色', '自定义'],
+                                          width=10, state='readonly')
+        self.preset_combo.pack(side='left', padx=(5, 0))
+        self.preset_combo.bind('<<ComboboxSelected>>', self._on_preset_changed)
+
+        # 可折叠的内容区
+        self.thresh_content = tk.Frame(thresh_frame, bg=COLORS['bg_panel'])
+        # 默认折叠，不 pack
+
+        # 从配置读取默认值
+        lower = self.config.get('threshold_segmentation', {}).get('hsv_range', {}).get('lower', [100, 50, 50])
         upper = self.config.get('threshold_segmentation', {}).get('hsv_range', {}).get('upper', [140, 255, 255])
-        self.h_upper = ParameterSlider(thresh_frame, label="H上限(色相)", from_=0, to=180, default=upper[0],
-                                        command=lambda v: self._on_param_changed())
-        self.h_upper.pack(fill='x', pady=2)
-        self.s_upper = ParameterSlider(thresh_frame, label="S上限(饱和度)", from_=0, to=255, default=upper[1],
-                                        command=lambda v: self._on_param_changed())
-        self.s_upper.pack(fill='x', pady=2)
-        self.v_upper = ParameterSlider(thresh_frame, label="V上限(亮度)", from_=0, to=255, default=upper[2],
-                                        command=lambda v: self._on_param_changed())
-        self.v_upper.pack(fill='x', pady=2)
+
+        # H 色相范围
+        self.h_range = RangeSlider(self.thresh_content, label="H · 色相范围", from_=0, to=180,
+                                    lower_default=lower[0], upper_default=upper[0],
+                                    command=lambda lo, hi: self._on_param_changed())
+        self.h_range.pack(fill='x', pady=3)
+
+        # S 饱和度范围
+        self.s_range = RangeSlider(self.thresh_content, label="S · 饱和度范围", from_=0, to=255,
+                                    lower_default=lower[1], upper_default=upper[1],
+                                    command=lambda lo, hi: self._on_param_changed())
+        self.s_range.pack(fill='x', pady=3)
+
+        # V 亮度范围
+        self.v_range = RangeSlider(self.thresh_content, label="V · 亮度范围", from_=0, to=255,
+                                    lower_default=lower[2], upper_default=upper[2],
+                                    command=lambda lo, hi: self._on_param_changed())
+        self.v_range.pack(fill='x', pady=3)
+
+        # 操作提示
+        tk.Label(self.thresh_content, text="拖动两端白色圆点调节范围，中间蓝色为选中区域",
+                 bg=COLORS['bg_panel'], fg=COLORS['text_secondary'],
+                 font=('Microsoft YaHei', 8)).pack(anchor='w', pady=(3, 0))
 
         # 最小孔隙面积
         min_area = self.config.get('area_calculation', {}).get('min_pore_area', 50)
@@ -264,8 +313,98 @@ class PorosityGUI:
                                         command=self._export_csv, state='disabled')
         self.export_btn.pack(fill='x')
 
+    def _toggle_thresh_panel(self):
+        """切换 HSV 阈值面板的折叠/展开状态"""
+        if self.thresh_collapsed:
+            # 展开
+            self.thresh_content.pack(fill='x', pady=(5, 0))
+            self.toggle_thresh_btn.config(text="▲ 折叠")
+            self.thresh_collapsed = False
+        else:
+            # 折叠
+            self.thresh_content.pack_forget()
+            self.toggle_thresh_btn.config(text="▼ 展开")
+            self.thresh_collapsed = True
+
+    def _on_method_changed(self, event=None):
+        """处理分割方法切换"""
+        method = self.method_var.get()
+
+        if method == 'deep_learning':
+            # 检查模型文件是否存在
+            model_path = Path(self.config.get('deep_learning', {}).get('model_path', 'models/pore_segment.onnx'))
+            if model_path.exists():
+                self.dl_status_label.config(text=f"DL模型: 就绪 ({model_path.name})", fg=COLORS['success'])
+            else:
+                self.dl_status_label.config(
+                    text=f"DL模型: 未找到 ({model_path})", fg=COLORS['danger']
+                )
+                # 自动切回阈值方法
+                self.method_var.set('threshold')
+                messagebox.showwarning(
+                    "模型未找到",
+                    f"深度学习模型文件不存在:\n{model_path}\n\n"
+                    f"请先训练并导出ONNX模型，或从其他来源获取。\n"
+                    f"已自动切换回阈值分割方法。"
+                )
+                return
+        else:
+            self.dl_status_label.config(text="DL模型: 未使用", fg=COLORS['text_secondary'])
+
+        # 方法切换后自动预览
+        self._preview_threshold()
+
+    def _get_segmenter_and_mask(self):
+        """根据当前选择的方法获取分割器和mask"""
+        method = self.method_var.get()
+
+        if method == 'deep_learning':
+            try:
+                from .dl_segment import DLSegmenter
+                segmenter = DLSegmenter(self.config)
+                return segmenter, 'deep_learning'
+            except Exception as e:
+                log(f"DL模型加载失败: {e}")
+                self.status_bar.set_status(f"DL模型错误: {str(e)[:50]}", COLORS['danger'])
+                # 回退到阈值方法
+                return self.analyzer.thresh_segmenter, 'threshold'
+        elif method == 'watershed':
+            return self.analyzer.watershed_segmenter, 'watershed'
+        else:
+            return self.analyzer.thresh_segmenter, 'threshold'
+
+    def _on_preset_changed(self, event=None):
+        """处理 HSV 预设选择变更"""
+        preset = self.preset_var.get()
+
+        presets = {
+            '蓝色树脂': {'lower': [100, 50, 50], 'upper': [140, 255, 255]},
+            '青色': {'lower': [80, 50, 50], 'upper': [100, 255, 255]},
+            '紫色': {'lower': [140, 50, 50], 'upper': [160, 255, 255]},
+            '绿色': {'lower': [40, 50, 50], 'upper': [80, 255, 255]},
+            '自定义': None,
+        }
+
+        if preset == '自定义':
+            return  # 不做任何更改，保持当前值
+
+        cfg = presets.get(preset)
+        if cfg:
+            lower = cfg['lower']
+            upper = cfg['upper']
+
+            self.h_range.set(lower[0], upper[0])
+            self.s_range.set(lower[1], upper[1])
+            self.v_range.set(lower[2], upper[2])
+
+            self.status_bar.set_status(
+                f"已应用预设 [{preset}]: H{lower[0]}-{upper[0]} S{lower[1]}-{upper[1]} V{lower[2]}-{upper[2]}",
+                COLORS['success']
+            )
+            # RangeSlider.set() 已触发 _on_param_changed()，200ms 后自动预览
+
     def _build_color_pick_panel(self, parent):
-        """构建取色校正面板"""
+        """构建取色校正面板（简化版：点击即应用，无容差设置）"""
         pick_frame = tk.LabelFrame(parent, text=" 取色校正 ",
                                     bg=COLORS['bg_panel'], fg=COLORS['primary'],
                                     font=('Microsoft YaHei', 10, 'bold'),
@@ -291,43 +430,17 @@ class PorosityGUI:
                                       fg=COLORS['text_secondary'], font=('Microsoft YaHei', 9))
         self.sample_label.pack(anchor='w')
 
-        # 步骤3：容差调整
-        tk.Label(pick_frame, text="Step 3: 调整容差", bg=COLORS['bg_panel'],
-                 fg=COLORS['text'], font=('Microsoft YaHei', 9, 'bold')).pack(anchor='w', pady=(5, 0))
+        # 取样操作按钮区
+        sample_btn_frame = tk.Frame(pick_frame, bg=COLORS['bg_panel'])
+        sample_btn_frame.pack(fill='x', pady=(5, 0))
 
-        # H容差：色相范围，控制颜色偏蓝还是偏绿/紫
-        self.h_tol = ParameterSlider(pick_frame, label="H容差(色相)", from_=1, to=30, default=10,
-                                     command=lambda v: self._on_param_changed())
-        self.h_tol.pack(fill='x', pady=1)
-        tk.Label(pick_frame, text="  色相范围：越大包含越多蓝绿色",
-                 bg=COLORS['bg_panel'], fg=COLORS['text_secondary'],
-                 font=('Microsoft YaHei', 8)).pack(anchor='w')
+        self.undo_sample_btn = CustomButton(sample_btn_frame, text="↩ 撤销上一取样", style='secondary',
+                                             command=self._undo_last_sample)
+        self.undo_sample_btn.pack(fill='x', pady=(0, 3))
 
-        # S容差：饱和度范围，控制颜色鲜艳程度
-        self.s_tol = ParameterSlider(pick_frame, label="S容差(饱和度)", from_=10, to=100, default=40,
-                                     command=lambda v: self._on_param_changed())
-        self.s_tol.pack(fill='x', pady=1)
-        tk.Label(pick_frame, text="  饱和度范围：越大包含越淡的蓝色",
-                 bg=COLORS['bg_panel'], fg=COLORS['text_secondary'],
-                 font=('Microsoft YaHei', 8)).pack(anchor='w')
-
-        # V容差：亮度范围，控制明暗程度
-        self.v_tol = ParameterSlider(pick_frame, label="V容差(亮度)", from_=10, to=100, default=40,
-                                     command=lambda v: self._on_param_changed())
-        self.v_tol.pack(fill='x', pady=1)
-        tk.Label(pick_frame, text="  亮度范围：越大包含越暗/越亮的蓝色",
-                 bg=COLORS['bg_panel'], fg=COLORS['text_secondary'],
-                 font=('Microsoft YaHei', 8)).pack(anchor='w')
-
-        # 应用取样按钮
-        self.apply_sample_btn = CustomButton(pick_frame, text="应用取样到阈值", style='primary',
-                                              command=self._apply_sampled_threshold)
-        self.apply_sample_btn.pack(fill='x', pady=(5, 0))
-
-        # 清空取样
-        self.clear_sample_btn = CustomButton(pick_frame, text="清空取样", style='danger',
+        self.clear_sample_btn = CustomButton(sample_btn_frame, text="清空取样", style='danger',
                                               command=self._clear_samples)
-        self.clear_sample_btn.pack(fill='x', pady=(2, 0))
+        self.clear_sample_btn.pack(fill='x')
 
     def _build_right_panel(self, parent):
         """构建右侧面板"""
@@ -422,12 +535,9 @@ class PorosityGUI:
         v_lower = max(0, v_mean - max(30, v_std))
         v_upper = min(255, v_mean + max(30, v_std))
 
-        self.h_lower.set(h_lower)
-        self.s_lower.set(s_lower)
-        self.v_lower.set(v_lower)
-        self.h_upper.set(h_upper)
-        self.s_upper.set(s_upper)
-        self.v_upper.set(v_upper)
+        self.h_range.set(h_lower, h_upper)
+        self.s_range.set(s_lower, s_upper)
+        self.v_range.set(v_lower, v_upper)
 
         self.status_bar.set_status(f"自动提取: H{h_mean} S{s_mean} V{v_mean}", COLORS['success'])
 
@@ -444,7 +554,7 @@ class PorosityGUI:
         messagebox.showinfo("取色提示", "直接点击原图上的蓝色孔隙区域即可\n任意点数均可，每次点击自动应用并预览")
 
     def _on_image_pick(self, img_x, img_y):
-        """处理图像点击取色——任意点数均可，每次点击自动应用阈值并预览"""
+        """处理图像点击取色——点击直接以固定窗口设置阈值并预览"""
         if self.original_image_hsv is None:
             return
 
@@ -461,28 +571,10 @@ class PorosityGUI:
         self.sampled_colors.append((sample_h, sample_s, sample_v))
         self.sample_label.config(text=f"已取样: {len(self.sampled_colors)} 个")
 
-        # 在状态栏显示最新取样
-        self.status_bar.set_status(
-            f"取样#{len(self.sampled_colors)}: H={sample_h} S={sample_s} V={sample_v}（已自动应用）",
-            COLORS['success']
-        )
+        # 固定窗口大小：以取样颜色为中心，向外扩展固定范围
+        H_WINDOW, S_WINDOW, V_WINDOW = 15, 50, 50
 
-        # 每次取样都自动应用阈值并预览（不限制点数）
-        self._apply_sampled_threshold()
-        self._preview_threshold()
-
-    def _apply_sampled_threshold(self):
-        """将取样颜色应用到阈值设置"""
-        if not self.sampled_colors:
-            messagebox.showwarning("提示", "请先取样！")
-            return
-
-        # 获取容差
-        tol_h = self.h_tol.get()
-        tol_s = self.s_tol.get()
-        tol_v = self.v_tol.get()
-
-        # 计算所有取样颜色的范围
+        # 基于所有取样点的范围，加上固定窗口
         h_vals = [c[0] for c in self.sampled_colors]
         s_vals = [c[1] for c in self.sampled_colors]
         v_vals = [c[2] for c in self.sampled_colors]
@@ -491,18 +583,68 @@ class PorosityGUI:
         s_min, s_max = min(s_vals), max(s_vals)
         v_min, v_max = min(v_vals), max(v_vals)
 
-        # 设置阈值：取样范围 ± 容差
-        self.h_lower.set(max(0, h_min - tol_h))
-        self.h_upper.set(min(180, h_max + tol_h))
-        self.s_lower.set(max(0, s_min - tol_s))
-        self.s_upper.set(min(255, s_max + tol_s))
-        self.v_lower.set(max(0, v_min - tol_v))
-        self.v_upper.set(min(255, v_max + tol_v))
+        self.h_range.set(max(0, h_min - H_WINDOW), min(180, h_max + H_WINDOW))
+        self.s_range.set(max(0, s_min - S_WINDOW), min(255, s_max + S_WINDOW))
+        self.v_range.set(max(0, v_min - V_WINDOW), min(255, v_max + V_WINDOW))
 
+        # 状态栏显示
         self.status_bar.set_status(
-            f"已应用{len(self.sampled_colors)}个取样: H{h_min}-{h_max} S{s_min}-{s_max} V{v_min}-{v_max}",
+            f"取样#{len(self.sampled_colors)}: H={sample_h} S={sample_s} V={sample_v}（已自动应用）",
             COLORS['success']
         )
+
+        # 自动预览
+        self._preview_threshold()
+
+    def _undo_last_sample(self):
+        """撤销上一个取样点，并自动重新计算阈值"""
+        if not self.sampled_colors:
+            self.status_bar.set_status("没有可撤销的取样点", COLORS['warning'])
+            return
+
+        # 删除最后一个取样点
+        removed = self.sampled_colors.pop()
+        count = len(self.sampled_colors)
+        self.sample_label.config(text=f"已取样: {count} 个")
+
+        # 固定窗口大小（与 _on_image_pick 保持一致）
+        H_WINDOW, S_WINDOW, V_WINDOW = 15, 50, 50
+
+        if count > 0:
+            # 还有剩余取样点：基于剩余点重新计算阈值
+            h_vals = [c[0] for c in self.sampled_colors]
+            s_vals = [c[1] for c in self.sampled_colors]
+            v_vals = [c[2] for c in self.sampled_colors]
+
+            h_min, h_max = min(h_vals), max(h_vals)
+            s_min, s_max = min(s_vals), max(s_vals)
+            v_min, v_max = min(v_vals), max(v_vals)
+
+            self.h_range.set(max(0, h_min - H_WINDOW), min(180, h_max + H_WINDOW))
+            self.s_range.set(max(0, s_min - S_WINDOW), min(255, s_max + S_WINDOW))
+            self.v_range.set(max(0, v_min - V_WINDOW), min(255, v_max + V_WINDOW))
+
+            self.status_bar.set_status(
+                f"已撤销取样: H={removed[0]} S={removed[1]} V={removed[2]}，剩余{count}个",
+                COLORS['success']
+            )
+        else:
+            # 没有取样点了：重置阈值为默认值
+            default_config = load_config(self.config_path)
+            lower = default_config.get('threshold_segmentation', {}).get('hsv_range', {}).get('lower', [100, 50, 50])
+            upper = default_config.get('threshold_segmentation', {}).get('hsv_range', {}).get('upper', [140, 255, 255])
+
+            self.h_range.set(lower[0], upper[0])
+            self.s_range.set(lower[1], upper[1])
+            self.v_range.set(lower[2], upper[2])
+
+            self.status_bar.set_status(
+                f"已撤销最后一个取样，阈值已重置为默认值",
+                COLORS['text_secondary']
+            )
+
+        # 自动预览更新
+        self._preview_threshold()
 
     def _clear_samples(self):
         """清空所有取样"""
@@ -510,6 +652,20 @@ class PorosityGUI:
         self.sample_label.config(text="已取样: 0 个")
         self.pick_mode = False
         self.status_bar.set_status("取样已清空", COLORS['text_secondary'])
+
+    def _apply_watershed(self, mask, image):
+        """应用分水岭算法分割粘连孔隙"""
+        distance = cv2.distanceTransform(mask, cv2.DIST_L2, 5)
+        _, markers = cv2.threshold(distance, 0.5 * distance.max(), 255, cv2.THRESH_BINARY)
+        markers = np.uint8(markers)
+        _, markers = cv2.connectedComponents(markers)
+        markers = markers + 1
+        markers[mask == 0] = 0
+        markers = markers.astype(np.int32)
+        cv2.watershed(cv2.cvtColor(image, cv2.COLOR_BGR2RGB), markers)
+        result = np.zeros_like(mask)
+        result[markers > 1] = 255
+        return result
 
     def _preview_threshold(self):
         """实时预览当前阈值的分割效果（使用原始HSV，与用户看到的图像一致）"""
@@ -524,12 +680,9 @@ class PorosityGUI:
             hsv = self.original_image_hsv
 
             # 使用当前UI的阈值参数进行分割
-            h_l = self.h_lower.get()
-            h_u = self.h_upper.get()
-            s_l = self.s_lower.get()
-            s_u = self.s_upper.get()
-            v_l = self.v_lower.get()
-            v_u = self.v_upper.get()
+            h_l, h_u = self.h_range.get()
+            s_l, s_u = self.s_range.get()
+            v_l, v_u = self.v_range.get()
 
             lower = np.array([h_l, s_l, v_l])
             upper = np.array([h_u, s_u, v_u])
@@ -544,6 +697,10 @@ class PorosityGUI:
             iterations = morph_cfg.get('iterations', 2)
             mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, open_k, iterations=iterations)
             mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, close_k, iterations=iterations)
+
+            # 分水岭算法（预览与分析保持一致）
+            if self.watershed_var.get():
+                mask = self._apply_watershed(mask, self.original_image)
 
             # 应用最小孔隙面积过滤
             min_area = self.min_area_slider.get()
@@ -662,9 +819,9 @@ class PorosityGUI:
             self.root.after(0, lambda: self._on_analysis_error(str(e)))
 
     def _analyze_single(self):
-        """单张分析（使用原始HSV，与预览一致）"""
+        """单张分析（支持阈值/分水岭/深度学习三种方法）"""
         path = self.selected_path
-        use_watershed = self.watershed_var.get()
+        method = self.method_var.get()
 
         # 检查图像是否已加载
         if self.original_image is None or self.original_image_hsv is None:
@@ -673,43 +830,66 @@ class PorosityGUI:
 
         start = time.time()
 
-        # 使用已加载的图像和原始HSV进行分析（与预览一致）
+        # 使用已加载的图像进行分析
         original = self.original_image
-        hsv = self.original_image_hsv
 
-        # 获取当前阈值
-        h_l = self.config['threshold_segmentation']['hsv_range']['lower'][0]
-        h_u = self.config['threshold_segmentation']['hsv_range']['upper'][0]
-        s_l = self.config['threshold_segmentation']['hsv_range']['lower'][1]
-        s_u = self.config['threshold_segmentation']['hsv_range']['upper'][1]
-        v_l = self.config['threshold_segmentation']['hsv_range']['lower'][2]
-        v_u = self.config['threshold_segmentation']['hsv_range']['upper'][2]
+        if method == 'deep_learning':
+            # 深度学习方法
+            try:
+                from .dl_segment import DLSegmenter
+                segmenter = DLSegmenter(self.config)
+                # DL需要增强后的图像
+                image_dict = {'enhanced': original, 'original': original}
+                seg_result = segmenter.segment(image_dict)
+                mask = seg_result['mask']
+                method_name = 'deep_learning'
+            except Exception as e:
+                log(f"深度学习分析失败: {e}")
+                self.root.after(0, lambda: self._on_analysis_error(
+                    f"深度学习分析失败:\n{str(e)}\n\n已回退到阈值分割。"
+                ))
+                # 回退到阈值方法
+                method = 'threshold'
+                method_name = 'threshold'
+                hsv = self.original_image_hsv
+                h_l = self.config['threshold_segmentation']['hsv_range']['lower'][0]
+                h_u = self.config['threshold_segmentation']['hsv_range']['upper'][0]
+                s_l = self.config['threshold_segmentation']['hsv_range']['lower'][1]
+                s_u = self.config['threshold_segmentation']['hsv_range']['upper'][1]
+                v_l = self.config['threshold_segmentation']['hsv_range']['lower'][2]
+                v_u = self.config['threshold_segmentation']['hsv_range']['upper'][2]
+                lower = np.array([h_l, s_l, v_l])
+                upper = np.array([h_u, s_u, v_u])
+                mask = cv2.inRange(hsv, lower, upper)
+        else:
+            # 阈值或分水岭方法
+            hsv = self.original_image_hsv
+            h_l = self.config['threshold_segmentation']['hsv_range']['lower'][0]
+            h_u = self.config['threshold_segmentation']['hsv_range']['upper'][0]
+            s_l = self.config['threshold_segmentation']['hsv_range']['lower'][1]
+            s_u = self.config['threshold_segmentation']['hsv_range']['upper'][1]
+            v_l = self.config['threshold_segmentation']['hsv_range']['lower'][2]
+            v_u = self.config['threshold_segmentation']['hsv_range']['upper'][2]
 
-        lower = np.array([h_l, s_l, v_l])
-        upper = np.array([h_u, s_u, v_u])
+            lower = np.array([h_l, s_l, v_l])
+            upper = np.array([h_u, s_u, v_u])
 
-        # 阈值分割（使用原始HSV）
-        mask = cv2.inRange(hsv, lower, upper)
+            mask = cv2.inRange(hsv, lower, upper)
 
-        # 形态学操作
-        morph_cfg = self.config.get('threshold_segmentation', {}).get('morphological_operations', {})
-        open_k = np.ones(tuple(morph_cfg.get('open_kernel', [3, 3])), np.uint8)
-        close_k = np.ones(tuple(morph_cfg.get('close_kernel', [5, 5])), np.uint8)
-        iterations = morph_cfg.get('iterations', 2)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, open_k, iterations=iterations)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, close_k, iterations=iterations)
+            # 形态学操作
+            morph_cfg = self.config.get('threshold_segmentation', {}).get('morphological_operations', {})
+            open_k = np.ones(tuple(morph_cfg.get('open_kernel', [3, 3])), np.uint8)
+            close_k = np.ones(tuple(morph_cfg.get('close_kernel', [5, 5])), np.uint8)
+            iterations = morph_cfg.get('iterations', 2)
+            mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, open_k, iterations=iterations)
+            mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, close_k, iterations=iterations)
 
-        # 分水岭算法（可选）
-        if use_watershed:
-            distance = cv2.distanceTransform(mask, cv2.DIST_L2, 5)
-            _, markers = cv2.threshold(distance, 0.5 * distance.max(), 255, cv2.THRESH_BINARY)
-            markers = np.uint8(markers)
-            _, markers = cv2.connectedComponents(markers)
-            markers = markers + 1
-            markers[mask == 0] = 0
-            markers = cv2.watershed(cv2.cvtColor(original, cv2.COLOR_BGR2RGB), markers)
-            mask = np.zeros_like(mask)
-            mask[markers > 1] = 255
+            # 分水岭算法（可选）
+            if method == 'watershed':
+                mask = self._apply_watershed(mask, original)
+                method_name = 'watershed'
+            else:
+                method_name = 'threshold'
 
         # 最小孔隙面积过滤
         min_area = self.config.get('area_calculation', {}).get('min_pore_area', 50)
@@ -739,7 +919,7 @@ class PorosityGUI:
             'total_pore_pixels': int(pore_pixels),
             'total_pixels': int(total_pixels),
             'avg_pore_area': round(avg_area, 2),
-            'method': 'watershed' if use_watershed else 'threshold',
+            'method': method_name,
             'processing_time': round(time.time() - start, 3),
         }
 
@@ -889,12 +1069,11 @@ class PorosityGUI:
     def _update_config_from_ui(self):
         """从 UI 更新配置"""
         # 更新 HSV 阈值
-        self.config['threshold_segmentation']['hsv_range']['lower'] = [
-            self.h_lower.get(), self.s_lower.get(), self.v_lower.get()
-        ]
-        self.config['threshold_segmentation']['hsv_range']['upper'] = [
-            self.h_upper.get(), self.s_upper.get(), self.v_upper.get()
-        ]
+        h_l, h_u = self.h_range.get()
+        s_l, s_u = self.s_range.get()
+        v_l, v_u = self.v_range.get()
+        self.config['threshold_segmentation']['hsv_range']['lower'] = [h_l, s_l, v_l]
+        self.config['threshold_segmentation']['hsv_range']['upper'] = [h_u, s_u, v_u]
 
         # 更新最小孔隙面积
         self.config['area_calculation']['min_pore_area'] = self.min_area_slider.get()
@@ -907,12 +1086,9 @@ class PorosityGUI:
         upper = default_config.get('threshold_segmentation', {}).get('hsv_range', {}).get('upper', [140, 255, 255])
         min_area = default_config.get('area_calculation', {}).get('min_pore_area', 50)
 
-        self.h_lower.set(lower[0])
-        self.s_lower.set(lower[1])
-        self.v_lower.set(lower[2])
-        self.h_upper.set(upper[0])
-        self.s_upper.set(upper[1])
-        self.v_upper.set(upper[2])
+        self.h_range.set(lower[0], upper[0])
+        self.s_range.set(lower[1], upper[1])
+        self.v_range.set(lower[2], upper[2])
         self.min_area_slider.set(min_area)
         self.watershed_var.set(False)
 

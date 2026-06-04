@@ -6,3 +6,9 @@ Pillow>=10.0.0
 PyYAML>=6.0
 tqdm>=4.65.0
 pandas>=2.0.0
+
+# 深度学习推理依赖（ONNX Runtime，轻量部署）
+# GPU版（Windows/Linux x86_64）
+onnxruntime-gpu>=1.16.0; platform_system != "Darwin"
+# CPU版（macOS或CPU-only环境）
+onnxruntime>=1.16.0; platform_system == "Darwin"

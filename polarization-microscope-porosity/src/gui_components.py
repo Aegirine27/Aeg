@@ -229,6 +229,161 @@ class ParameterSlider(tk.Frame):
         self.value_label.config(text=str(value))
 
 
+class RangeSlider(tk.Canvas):
+    """
+    双滑块范围选择器（下限/上限合并到同一滑动条）
+
+    用 Canvas 绘制轨道和两个可拖动手柄，
+    手柄之间区域高亮显示当前选中范围。
+    """
+
+    TRACK_Y = 22
+    TRACK_START = 35
+    TRACK_END = 215
+    HANDLE_RADIUS = 7
+    MIN_GAP = 8  # 两个手柄之间的最小像素间距
+
+    def __init__(self, parent, label="范围", from_=0, to=255,
+                 lower_default=0, upper_default=255, command=None, **kwargs):
+        super().__init__(parent, width=250, height=45,
+                         bg=COLORS['bg_panel'], highlightthickness=0, **kwargs)
+
+        self.from_ = from_
+        self.to = to
+        self.command = command
+        self._dragging = None  # 'lower', 'upper', 或 None
+
+        # 当前值
+        self.lower_value = lower_default
+        self.upper_value = upper_default
+
+        # 标签
+        self.create_text(5, 8, text=label, anchor='nw',
+                         fill=COLORS['text'], font=('Microsoft YaHei', 9))
+
+        # 数值显示
+        self.value_text = self.create_text(245, 8, text=self._fmt_value(), anchor='ne',
+                                            fill=COLORS['accent'], font=('Microsoft YaHei', 9, 'bold'))
+
+        # 绑定鼠标事件
+        self.bind('<Button-1>', self._on_mouse_down)
+        self.bind('<B1-Motion>', self._on_mouse_drag)
+        self.bind('<ButtonRelease-1>', self._on_mouse_up)
+
+        # 初始绘制
+        self._draw()
+
+    def _value_to_x(self, value):
+        """将数值映射到轨道像素坐标"""
+        ratio = (value - self.from_) / (self.to - self.from_)
+        return self.TRACK_START + ratio * (self.TRACK_END - self.TRACK_START)
+
+    def _x_to_value(self, x):
+        """将轨道像素坐标映射到数值"""
+        ratio = (x - self.TRACK_START) / (self.TRACK_END - self.TRACK_START)
+        value = self.from_ + ratio * (self.to - self.from_)
+        return int(round(max(self.from_, min(self.to, value))))
+
+    def _fmt_value(self):
+        """格式化数值显示"""
+        return f"{self.lower_value} - {self.upper_value}"
+
+    def _draw(self):
+        """绘制轨道和手柄"""
+        self.delete('track', 'fill', 'handle')
+
+        x_low = self._value_to_x(self.lower_value)
+        x_high = self._value_to_x(self.upper_value)
+        y = self.TRACK_Y
+        r = self.HANDLE_RADIUS
+
+        # 轨道背景（灰色）
+        self.create_line(self.TRACK_START, y, self.TRACK_END, y,
+                         fill=COLORS['border'], width=4, tags='track', capstyle='round')
+
+        # 选中区域（蓝色高亮）
+        self.create_line(x_low, y, x_high, y,
+                         fill=COLORS['accent'], width=4, tags='fill', capstyle='round')
+
+        # 下限手柄
+        self.create_oval(x_low - r, y - r, x_low + r, y + r,
+                         fill='white', outline=COLORS['accent'], width=2, tags='handle')
+
+        # 上限手柄
+        self.create_oval(x_high - r, y - r, x_high + r, y + r,
+                         fill='white', outline=COLORS['accent'], width=2, tags='handle')
+
+        # 更新数值显示
+        self.itemconfig(self.value_text, text=self._fmt_value())
+
+    def _on_mouse_down(self, event):
+        """鼠标按下：判断选中哪个手柄（只有点击手柄附近才能拖动）"""
+        x_low = self._value_to_x(self.lower_value)
+        x_high = self._value_to_x(self.upper_value)
+        y = self.TRACK_Y
+
+        # 计算点击位置到两个手柄的距离
+        dist_low = abs(event.x - x_low) + abs(event.y - y)
+        dist_high = abs(event.x - x_high) + abs(event.y - y)
+
+        # 判断点击了哪个手柄（考虑吸附范围）
+        if dist_low < dist_high and dist_low < 20:
+            self._dragging = 'lower'
+        elif dist_high <= dist_low and dist_high < 20:
+            self._dragging = 'upper'
+        else:
+            # 点击在轨道上但不靠近手柄：不开始拖动，避免误触
+            self._dragging = None
+
+    def _on_mouse_drag(self, event):
+        """鼠标拖动：移动手柄"""
+        if self._dragging == 'lower':
+            self._update_lower(event.x)
+        elif self._dragging == 'upper':
+            self._update_upper(event.x)
+
+    def _update_lower(self, x):
+        """更新下限值"""
+        x = max(self.TRACK_START, min(x, self.TRACK_END))
+        # 确保不超过上限
+        x_high = self._value_to_x(self.upper_value)
+        x = min(x, x_high - self.MIN_GAP)
+        self.lower_value = self._x_to_value(x)
+        self._draw()
+        if self.command:
+            self.command(self.lower_value, self.upper_value)
+
+    def _update_upper(self, x):
+        """更新上限值"""
+        x = max(self.TRACK_START, min(x, self.TRACK_END))
+        # 确保不低于下限
+        x_low = self._value_to_x(self.lower_value)
+        x = max(x, x_low + self.MIN_GAP)
+        self.upper_value = self._x_to_value(x)
+        self._draw()
+        if self.command:
+            self.command(self.lower_value, self.upper_value)
+
+    def _on_mouse_up(self, event):
+        """鼠标释放：停止拖动"""
+        self._dragging = None
+
+    def get(self):
+        """获取当前范围 (下限, 上限)"""
+        return (self.lower_value, self.upper_value)
+
+    def set(self, lower, upper):
+        """设置范围"""
+        self.lower_value = max(self.from_, min(lower, self.to))
+        self.upper_value = max(self.from_, min(upper, self.to))
+        # 确保下限 <= 上限
+        if self.lower_value > self.upper_value:
+            self.lower_value, self.upper_value = self.upper_value, self.lower_value
+        self._draw()
+        if self.command:
+            self.command(self.lower_value, self.upper_value)
+
+
 class CustomButton(tk.Button):
     """
     自定义样式按钮

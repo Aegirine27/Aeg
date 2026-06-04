@@ -13,11 +13,14 @@
 import cv2
 import numpy as np
 
+from .segmentation_base import BaseSegmenter
 
-class ThresholdSegmenter:
+
+class ThresholdSegmenter(BaseSegmenter):
     """基于颜色阈值的孔隙分割器"""
 
     def __init__(self, config):
+        super().__init__(config)
         self.config = config.get('threshold_segmentation', {})
 
     def segment(self, image_dict):
