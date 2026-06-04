@@ -23,10 +23,10 @@ preprocessing:
     sigma_color: 75
     sigma_space: 75
   illumination_correction:
-    enabled: true
-    kernel_size: 51  # 必须是奇数
+    enabled: false         # 禁用：会改变颜色分布，导致阈值分割异常
+    kernel_size: 51
   contrast_enhancement:
-    enabled: true
+    enabled: false         # 禁用：CLAHE会增强非孔隙区域的对比度，干扰分割
     clip_limit: 2.0
     tile_grid_size: [8, 8]
 
@@ -34,8 +34,12 @@ preprocessing:
 threshold_segmentation:
   color_space: "HSV"  # HSV, Lab, RGB
   hsv_range:
-    lower: [100, 120, 60]  # H, S, V 下限 (收紧范围，提高饱和度要求)
-    upper: [120, 255, 180] # H, S, V 上限
+    lower: [100, 50, 50]   # H, S, V 下限 (蓝色树脂默认范围)
+    upper: [140, 255, 255] # H, S, V 上限
+  morphological_operations:
+    open_kernel: [3, 3]
+    close_kernel: [5, 5]
+    iterations: 1           # 从2减到1，避免过度膨胀孔隙区域
   lab_range:
     lower: [0, 0, -128]    # L, a, b 下限（蓝色在b通道为负）
     upper: [100, 127, -20] # L, a, b 上限

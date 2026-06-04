@@ -42,17 +42,17 @@ class PoreSegmentationDataset(Dataset):
         self.patches = self._collect_patches()
         print(f"数据集创建完成: {len(self.patches)} 个patches")
 
-        # 数据增强pipeline
+        # 数据增强pipeline (兼容 albumentations >= 2.0)
         if augment:
             self.transform = A.Compose([
                 A.HorizontalFlip(p=0.5),
                 A.VerticalFlip(p=0.5),
                 A.RandomRotate90(p=0.5),
-                A.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1,
-                                   rotate_limit=15, p=0.5),
+                A.Affine(scale=(0.9, 1.1), translate_percent=(-0.1, 0.1),
+                         rotate=(-15, 15), p=0.5),
                 A.RandomBrightnessContrast(brightness_limit=0.2,
                                            contrast_limit=0.2, p=0.5),
-                A.GaussNoise(var_limit=(10, 50), p=0.3),
+                A.GaussNoise(std_range=(0.01, 0.05), mean_range=(0, 0), p=0.3),
                 A.Normalize(mean=(0.485, 0.456, 0.406),
                            std=(0.229, 0.224, 0.225)),
                 ToTensorV2(),

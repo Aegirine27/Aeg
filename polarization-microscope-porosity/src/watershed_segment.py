@@ -3,13 +3,13 @@
 
 适用场景：
     - 孔隙结构复杂，边缘模糊
-    - 蓝色树脂颜色不均匀（岩石杂基不完全填充导致）
     - 多个孔隙粘连在一起，难以用简单阈值分开
 
 算法流程：
-    1. 对图像进行梯度计算
-    2. 距离变换找到孔隙中心（标记）
+    1. 对初始掩膜进行距离变换
+    2. 找到孔隙中心（标记）
     3. 分水岭算法分割粘连区域
+    4. 只保留原始阈值掩膜内的分割结果
 """
 import cv2
 import numpy as np
@@ -41,7 +41,7 @@ class WatershedSegmenter(BaseSegmenter):
                 'num_regions': 分割出的区域数量
             }
         """
-        enhanced = image_dict['enhanced']
+        enhanced = image_dict.get('enhanced', image_dict.get('original'))
 
         # 如果没有初始掩膜，先用颜色阈值生成
         if initial_mask is None:
@@ -52,47 +52,42 @@ class WatershedSegmenter(BaseSegmenter):
         # 1. 对初始掩膜进行距离变换
         distance = ndimage.distance_transform_edt(initial_mask)
 
-        # 2. 找到局部最大值作为标记
+        # 2. 找到局部最大值作为标记（使用形态学操作）
         cfg = self.config.get('distance_transform', {})
         kernel_size = cfg.get('kernel_size', 5)
-        kernel = np.ones((kernel_size, kernel_size), np.uint8)
-
-        # 对距离图进行局部最大值检测
         local_max = self._find_local_maxima(distance, kernel_size)
 
         # 3. 标记连通区域
         markers, num_features = ndimage.label(local_max)
 
-        # 4. 确保标记在前景内部
-        markers = markers * (initial_mask // 255)
+        # 4. 准备分水岭输入
+        # markers: 0=未知(由watershed决定), 1=背景, 2+=前景种子
+        # 将背景区域标记为1，前景种子从2开始
+        markers = markers.astype(np.int32)
+        markers[markers > 0] += 1  # 前景种子从2开始
+        markers[initial_mask == 0] = 1  # 明确标记背景为1
 
-        # 5. 准备分水岭输入
+        # 5. 执行分水岭
         # 使用梯度幅值作为"地形"
         gray = cv2.cvtColor(enhanced, cv2.COLOR_BGR2GRAY)
         gradient = cv2.morphologyEx(gray, cv2.MORPH_GRADIENT, np.ones((3, 3), np.uint8))
 
-        # 6. 执行分水岭
-        markers = markers.astype(np.int32)
         cv2.watershed(enhanced, markers)
 
-        # 7. 生成分割结果
-        #  watershed 结果：-1=边界, 1-num=不同区域, 0=背景
-        labels = markers.copy()
-
-        # 前景掩膜（排除边界和背景）
+        # 6. 生成分割结果
+        # watershed结果: -1=边界, 0=背景, 1=原始背景, 2+=前景区域
+        # 只保留前景区域（原始掩膜内且被watershed标记为前景的）
+        # 注意：watershed可能把边界(-1)和背景(0/1)都排除
         mask = np.zeros_like(initial_mask)
-        mask[labels > 0] = 255
+        mask[(markers > 1) & (initial_mask > 0)] = 255
 
         # 清理边界
         if self.config.get('border_clearing', {}).get('enabled', True):
             mask = self._clear_border(mask)
 
-        # 填充孔洞
-        mask = self._fill_holes(mask)
-
         return {
             'mask': mask,
-            'labels': labels,
+            'labels': markers,
             'method': 'watershed',
             'num_regions': num_features
         }
@@ -109,18 +104,7 @@ class WatershedSegmenter(BaseSegmenter):
     def _clear_border(self, mask):
         """
         清除与图像边界相连的区域
-        这些通常是截断的不完整孔隙
         """
         from skimage.segmentation import clear_border
         cleared = clear_border(mask > 0)
         return (cleared * 255).astype(np.uint8)
-
-    def _fill_holes(self, mask):
-        """
-        填充掩膜中的孔洞
-        """
-        # 使用轮廓填充法
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        filled = np.zeros_like(mask)
-        cv2.drawContours(filled, contours, -1, 255, -1)
-        return filled

@@ -75,22 +75,27 @@ class PorosityAnalyzer:
         original = load_image(image_path)
         filename = Path(image_path).stem
 
-        # 2. 预处理
+        # 2. 预处理（去噪，保留颜色空间转换）
         processed = self.preprocessor.process(original)
 
         # 3. 根据方法选择分割器
+        # 阈值分割使用原始图像的HSV（与GUI预览一致），避免预处理改变颜色分布
         if method == 'deep_learning':
             segmenter = self._get_dl_segmenter()
             seg_result = segmenter.segment(processed)
             mask = seg_result['mask']
         elif method == 'watershed':
             # 分水岭需要阈值分割作为初始mask
-            thresh_result = self.thresh_segmenter.segment(processed)
+            # 使用原始图像HSV进行阈值分割，确保与GUI预览一致
+            original_hsv = cv2.cvtColor(original, cv2.COLOR_BGR2HSV)
+            thresh_result = self.thresh_segmenter.segment({'hsv': original_hsv})
             initial_mask = thresh_result['mask']
             ws_result = self.watershed_segmenter.segment(processed, initial_mask)
             mask = ws_result['mask']
         else:  # threshold (default)
-            thresh_result = self.thresh_segmenter.segment(processed)
+            # 使用原始图像HSV进行阈值分割，确保与GUI预览一致
+            original_hsv = cv2.cvtColor(original, cv2.COLOR_BGR2HSV)
+            thresh_result = self.thresh_segmenter.segment({'hsv': original_hsv})
             mask = thresh_result['mask']
 
         # 4. 面孔率计算
