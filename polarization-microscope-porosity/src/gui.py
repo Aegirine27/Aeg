@@ -792,8 +792,8 @@ class PorosityGUI:
             mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, open_k, iterations=iterations)
             mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, close_k, iterations=iterations)
 
-            # 分水岭算法（预览与分析保持一致）
-            if self.watershed_var.get():
+            # 分水岭算法（仅在选择了watershed方法时应用）
+            if self.method_var.get() == 'watershed':
                 mask = self._apply_watershed(mask, self.original_image)
 
             # 应用最小孔隙面积过滤
@@ -1051,7 +1051,7 @@ class PorosityGUI:
         """批量分析"""
         input_dir = Path(self.selected_path)
         output_dir = input_dir / 'results'
-        use_watershed = self.watershed_var.get()
+        method = self.method_var.get()
 
         # 收集图像（支持所有常见格式，大小写不敏感）
         extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff', '.webp', '.gif'}
@@ -1077,13 +1077,13 @@ class PorosityGUI:
                 thresh_result = self.analyzer.thresh_segmenter.segment(processed)
                 mask = thresh_result['mask']
 
-                if use_watershed:
+                if method == 'watershed':
                     watershed_result = self.analyzer.watershed_segmenter.segment(processed, mask)
                     mask = watershed_result['mask']
 
                 stats = self.analyzer.calculator.calculate(mask)
                 stats['filename'] = img_path.stem
-                stats['method'] = 'watershed' if use_watershed else 'threshold'
+                stats['method'] = method
 
                 self.batch_results.append(stats)
             except Exception as e:
@@ -1190,7 +1190,6 @@ class PorosityGUI:
         self.s_range.set(lower[1], upper[1])
         self.v_range.set(lower[2], upper[2])
         self.min_area_slider.set(min_area)
-        self.watershed_var.set(False)
 
         self.config = default_config
         self._clear_samples()
