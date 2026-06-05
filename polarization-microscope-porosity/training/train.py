@@ -127,6 +127,12 @@ def main():
     parser.add_argument('--device', default='cuda', choices=['cuda', 'cpu'],
                         help='计算设备')
     parser.add_argument('--num-workers', type=int, default=4, help='数据加载线程数')
+    parser.add_argument('--checkpoint', '-c', default=None,
+                        help='从已有模型继续训练（传入 .pth 路径）')
+    parser.add_argument('--resume', action='store_true',
+                        help='恢复完整训练状态（包括epoch、optimizer、scheduler）')
+    parser.add_argument('--finetune-lr', type=float, default=5e-5,
+                        help='增量训练时的学习率（默认5e-5，比从头训练低一半）')
 
     args = parser.parse_args()
 
@@ -159,8 +165,38 @@ def main():
     model = model.to(device)
     get_model_summary(model)
 
+    # 训练状态变量
+    start_epoch = 1
+    best_dice = 0
+    best_epoch = 0
+    patience_counter = 0
+    early_stop_patience = 15
+
     # 优化器和学习率调度
-    optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    effective_lr = args.lr
+
+    # 加载已有模型（增量训练）
+    if args.checkpoint and Path(args.checkpoint).exists():
+        print(f"\n加载已有模型: {args.checkpoint}")
+        checkpoint = torch.load(args.checkpoint, map_location=device)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        print(f"  原模型最佳Dice: {checkpoint.get('best_dice', 'N/A')}")
+        print(f"  原模型训练轮数: {checkpoint.get('epoch', 'N/A')}")
+
+        if args.resume and 'optimizer_state_dict' in checkpoint:
+            # 恢复完整训练状态
+            effective_lr = checkpoint.get('config', {}).get('lr', args.lr)
+            optimizer = optim.Adam(model.parameters(), lr=effective_lr)
+            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            start_epoch = checkpoint.get('epoch', 0) + 1
+            best_dice = checkpoint.get('best_dice', 0)
+            print(f"  恢复训练状态: 从 epoch {start_epoch} 继续")
+        else:
+            # 只加载模型权重，使用增量训练学习率
+            effective_lr = args.finetune_lr
+            print(f"  增量训练模式: 学习率降至 {effective_lr}")
+
+    optimizer = optim.Adam(model.parameters(), lr=effective_lr)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode='max', factor=0.5, patience=5, verbose=True
     )
@@ -169,15 +205,11 @@ def main():
     scaler = GradScaler()
 
     # 训练循环
-    print(f"\n开始训练: {args.epochs} epochs")
+    actual_epochs = args.epochs + start_epoch - 1
+    print(f"\n开始训练: {start_epoch} -> {actual_epochs} epochs")
     print("-" * 50)
 
-    best_dice = 0
-    best_epoch = 0
-    patience_counter = 0
-    early_stop_patience = 15
-
-    for epoch in range(1, args.epochs + 1):
+    for epoch in range(start_epoch, actual_epochs + 1):
         start_time = time.time()
 
         # 训练

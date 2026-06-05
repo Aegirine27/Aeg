@@ -7,7 +7,7 @@ segmentation:
 # 深度学习分割参数
 # 注意: 需要先训练并导出ONNX模型到 models/pore_segment.onnx
 deep_learning:
-  enabled: false
+  enabled: true
   model_path: "models/pore_segment.onnx"
   patch_size: 512
   overlap: 128

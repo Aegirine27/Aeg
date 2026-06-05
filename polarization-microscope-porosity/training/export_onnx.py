@@ -37,10 +37,10 @@ def export_onnx(checkpoint_path, output_path, model=None, input_size=(1, 3, 512,
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    # 创建或加载模型
+    # 创建或加载模型（不下载预训练权重，直接使用训练好的权重）
     if model is None:
         print("创建模型...")
-        model = create_model()
+        model = create_model(encoder_weights=None)
         model = model.to(device)
 
     # 加载权重

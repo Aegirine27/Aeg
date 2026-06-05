@@ -91,7 +91,11 @@ class DLSegmenter(BaseSegmenter):
         # 获取输入信息
         input_meta = self._session.get_inputs()[0]
         self._input_name = input_meta.name
-        self._input_shape = input_meta.shape  # 例如 [1, 3, 512, 512]
+        raw_shape = input_meta.shape  # 可能是 [1, 3, 512, 512] 或 ['batch_size', 3, 'height', 'width']
+        # 将字符串维度替换为 patch_size（ONNX dynamic axes 导致）
+        self._input_shape = [
+            self.patch_size if isinstance(s, str) else s for s in raw_shape
+        ]
 
     def _warmup(self):
         """预热推理，首次GPU推理较慢"""

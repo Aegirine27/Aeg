@@ -100,19 +100,6 @@ class PorosityGUI:
 
     def _build_ui(self):
         """构建 UI 界面"""
-        # ============ 顶部标题栏 ============
-        title_frame = tk.Frame(self.root, bg=COLORS['primary'], height=50)
-        title_frame.pack(fill='x')
-        title_frame.pack_propagate(False)
-
-        tk.Label(title_frame, text="偏光显微镜面孔率识别系统",
-                 bg=COLORS['primary'], fg='white',
-                 font=('Microsoft YaHei', 14, 'bold')).pack(side='left', padx=15, pady=8)
-
-        tk.Label(title_frame, text="v1.0",
-                 bg=COLORS['primary'], fg='#BDC3C7',
-                 font=('Microsoft YaHei', 10)).pack(side='left', pady=8)
-
         # ============ 主体区域（左右分栏） ============
         main_frame = tk.Frame(self.root, bg=COLORS['bg_main'])
         main_frame.pack(fill='both', expand=True, padx=10, pady=10)
@@ -412,9 +399,9 @@ class PorosityGUI:
         pick_frame.pack(fill='x', padx=10, pady=5)
 
         # 步骤1：自动提取蓝色
-        tk.Label(pick_frame, text="Step 1: 自动提取蓝色", bg=COLORS['bg_panel'],
+        tk.Label(pick_frame, text="Step 1: 自动孔隙提取", bg=COLORS['bg_panel'],
                  fg=COLORS['text'], font=('Microsoft YaHei', 9, 'bold')).pack(anchor='w')
-        self.auto_blue_btn = CustomButton(pick_frame, text="自动提取蓝色", style='secondary',
+        self.auto_blue_btn = CustomButton(pick_frame, text="自动孔隙提取", style='secondary',
                                            command=self._auto_extract_blue)
         self.auto_blue_btn.pack(fill='x', pady=(2, 5))
 
@@ -453,9 +440,19 @@ class PorosityGUI:
                                     padx=10, pady=10)
         anno_frame.pack(fill='x', padx=10, pady=5)
 
-        tk.Label(anno_frame, text="生成高质量训练标注",
+        # 使用说明
+        help_text = (
+            "使用说明:\n"
+            "  1. 先点击'开始分析'查看分割结果\n"
+            "  2. 勾选'启用画笔标注修正'进入标注模式\n"
+            "  3. 选择'前景(孔隙)'添加漏检的孔隙\n"
+            "  4. 选择'背景(删除)'擦除误检的区域\n"
+            "  5. 涂抹时绿色叠加层会实时变化\n"
+            "  6. 点击'保存标注'覆盖原SAM标注"
+        )
+        tk.Label(anno_frame, text=help_text,
                  bg=COLORS['bg_panel'], fg=COLORS['text_secondary'],
-                 font=('Microsoft YaHei', 9)).pack(anchor='w')
+                 font=('Microsoft YaHei', 8), justify='left').pack(anchor='w', pady=(0, 5))
 
         # 标注模式开关
         self.annotate_mode_var = tk.BooleanVar(value=False)
@@ -524,15 +521,35 @@ class PorosityGUI:
         self.status_bar.set_status("标注已清空", COLORS['text_secondary'])
 
     def _save_annotation(self):
-        """保存标注为训练数据"""
+        """保存标注为训练数据
+
+        保存命名规则: {原图名}_mask.png，与原图一一对应
+        """
         mask = self.annotated_viewer.get_annotation_mask()
         if mask is None:
             messagebox.showwarning("提示", "没有可保存的标注")
             return
+
+        # 获取原图名
+        if not self.selected_path:
+            messagebox.showwarning("提示", "请先选择图像")
+            return
+
+        stem = Path(self.selected_path).stem
         output_dir = Path('data/labels')
         output_dir.mkdir(parents=True, exist_ok=True)
-        mask_path = output_dir / f"annotated_mask_{len(list(output_dir.glob('*.png')))}.png"
+        mask_path = output_dir / f"{stem}_mask.png"
+
         cv2.imwrite(str(mask_path), mask)
+
+        # 同时更新可视化图
+        vis_path = output_dir / f"{stem}_vis.jpg"
+        if self.original_image is not None:
+            overlay = self.original_image.copy()
+            overlay[mask > 0] = [0, 255, 0]  # 绿色标注
+            vis = cv2.addWeighted(self.original_image, 0.6, overlay, 0.4, 0)
+            cv2.imwrite(str(vis_path), vis)
+
         self.status_bar.set_status(f"标注已保存: {mask_path.name}", COLORS['success'])
         messagebox.showinfo("完成", f"标注已保存:\n{mask_path}")
 
@@ -561,9 +578,35 @@ class PorosityGUI:
                                             click_callback=self._on_image_pick)
         self.original_viewer.grid(row=0, column=0, padx=(0, 5), sticky='nsew')
 
-        self.annotated_viewer = ImageViewer(img_container, title="标注图像（孔隙=蓝色，背景=白色）",
+        self.annotated_viewer = ImageViewer(img_container, title="标注图像（黄色=孔隙，可涂抹修正）",
                                              width=420, height=420)
         self.annotated_viewer.grid(row=0, column=1, padx=(5, 0), sticky='nsew')
+
+        # 缩放控制按钮（原图）
+        zoom_btn_frame = tk.Frame(img_container, bg=COLORS['bg_main'])
+        zoom_btn_frame.grid(row=1, column=0, padx=(0, 5), pady=(5, 0), sticky='ew')
+        CustomButton(zoom_btn_frame, text="放大", style='primary',
+                     command=self.original_viewer.zoom_in).pack(side='left', padx=2)
+        CustomButton(zoom_btn_frame, text="缩小", style='primary',
+                     command=self.original_viewer.zoom_out).pack(side='left', padx=2)
+        CustomButton(zoom_btn_frame, text="重置", style='secondary',
+                     command=self.original_viewer.reset_zoom).pack(side='left', padx=2)
+        tk.Label(zoom_btn_frame, text="滚轮缩放 | 中键拖拽",
+                 bg=COLORS['bg_main'], fg=COLORS['text_secondary'],
+                 font=('Microsoft YaHei', 8)).pack(side='left', padx=5)
+
+        # 缩放控制按钮（标注图）
+        zoom_btn_frame2 = tk.Frame(img_container, bg=COLORS['bg_main'])
+        zoom_btn_frame2.grid(row=1, column=1, padx=(5, 0), pady=(5, 0), sticky='ew')
+        CustomButton(zoom_btn_frame2, text="放大", style='primary',
+                     command=self.annotated_viewer.zoom_in).pack(side='left', padx=2)
+        CustomButton(zoom_btn_frame2, text="缩小", style='primary',
+                     command=self.annotated_viewer.zoom_out).pack(side='left', padx=2)
+        CustomButton(zoom_btn_frame2, text="重置", style='secondary',
+                     command=self.annotated_viewer.reset_zoom).pack(side='left', padx=2)
+        tk.Label(zoom_btn_frame2, text="滚轮缩放 | 中键拖拽",
+                 bg=COLORS['bg_main'], fg=COLORS['text_secondary'],
+                 font=('Microsoft YaHei', 8)).pack(side='left', padx=5)
 
         # --- 结果展示区 ---
         result_frame = tk.LabelFrame(right_frame, text=" 分析结果 ",
@@ -876,10 +919,42 @@ class PorosityGUI:
                     # 启用标注修正功能
                     self.annotate_check.config(state='normal')
                     self.save_anno_btn.config(state='normal')
-                    self.annotated_viewer.load_annotation_mask(
-                        np.zeros(self.original_image.shape[:2], dtype=np.uint8)
-                    )
-                    self.status_bar.set_status("图像已加载，可调整阈值或取色", COLORS['success'])
+
+                    # 尝试加载已有的SAM标注mask进行修正
+                    stem = Path(path).stem
+                    existing_mask_path = Path('data/labels') / f"{stem}_mask.png"
+                    if existing_mask_path.exists():
+                        existing_mask = cv2.imread(str(existing_mask_path), cv2.IMREAD_GRAYSCALE)
+                        if existing_mask is not None:
+                            # 检查mask尺寸是否与图像匹配
+                            img_h, img_w = self.original_image.shape[:2]
+                            mask_h, mask_w = existing_mask.shape
+                            if mask_h == img_h and mask_w == img_w:
+                                self.annotated_viewer.load_annotation_mask(existing_mask)
+                                # 显示原图 + mask叠加（黄色高亮，变化一目了然）
+                                self.annotated_viewer.show_image(self.original_image)
+                                self.status_bar.set_status(f"图像已加载，已加载现有标注: {existing_mask_path.name}", COLORS['success'])
+                                log(f"加载已有标注: {existing_mask_path}")
+                            else:
+                                # 尺寸不匹配，使用空白mask
+                                log(f"标注尺寸不匹配 ({mask_h}x{mask_w} vs {img_h}x{img_w})，跳过加载: {existing_mask_path.name}")
+                                self.annotated_viewer.load_annotation_mask(
+                                    np.zeros(self.original_image.shape[:2], dtype=np.uint8)
+                                )
+                                self.annotated_viewer.clear()
+                                self.status_bar.set_status(f"图像已加载 (标注尺寸不匹配，已跳过)", COLORS['warning'])
+                        else:
+                            self.annotated_viewer.load_annotation_mask(
+                                np.zeros(self.original_image.shape[:2], dtype=np.uint8)
+                            )
+                            self.annotated_viewer.clear()
+                            self.status_bar.set_status("图像已加载，可调整阈值或取色", COLORS['success'])
+                    else:
+                        self.annotated_viewer.load_annotation_mask(
+                            np.zeros(self.original_image.shape[:2], dtype=np.uint8)
+                        )
+                        self.annotated_viewer.clear()
+                        self.status_bar.set_status("图像已加载，可调整阈值或取色", COLORS['success'])
                     log(f"图像加载成功: {self.original_image.shape}")
                 except Exception as e:
                     error_msg = f"无法加载图像:\n{e}"
@@ -1271,9 +1346,27 @@ class PorosityGUI:
 
         stats = result['stats']
 
-        # 显示图像
+        # 显示图像：original_viewer显示原图，annotated_viewer显示原图+mask叠加
         self.original_viewer.show_image(result['original'])
-        self.annotated_viewer.show_image(result['annotated'])
+        self.annotated_viewer.show_image(result['original'])
+
+        # 将分析结果的mask加载到标注面板，支持在分析结果基础上修正
+        if 'mask' in result and result['mask'] is not None:
+            # 检查用户是否已有标注（分析前做了修改）
+            user_mask = self.annotated_viewer.get_annotation_mask()
+            if user_mask is not None and user_mask.shape == result['mask'].shape and user_mask.sum() > 0:
+                # 用户已有标注，询问是否覆盖
+                if messagebox.askyesno(
+                    "标注覆盖确认",
+                    "检测到您已有标注修改。\n\n"
+                    "点击'是'→ 用新分析结果覆盖现有标注\n"
+                    "点击'否'→ 保留现有标注（不加载新结果）",
+                    icon='question'
+                ):
+                    self.annotated_viewer.load_annotation_mask(result['mask'].copy())
+                # 用户选择'否'，保留现有标注，不做任何操作
+            else:
+                self.annotated_viewer.load_annotation_mask(result['mask'].copy())
 
         # 更新数值
         self.porosity_card.set_value(f"{stats['porosity_percent']:.4f}")
