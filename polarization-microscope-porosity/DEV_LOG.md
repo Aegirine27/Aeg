@@ -7,7 +7,7 @@
 1. **删除旧标注并重新生成** (`2026-06-05`)
    - 删除 `data/labels/` 下 127 个旧标注（含质量问题的 mask）
    - 下载 SAM 模型 `sam_vit_b_01ec64.pth`（~375MB）到 `models/`
-   - 使用 `scripts/generate_sam_labels.py` 为 `d:/AI/Test/` 中 44 张图像重新生成 SAM 初始标注
+   - 使用 `scripts/generate_sam_labels.py` 为 `./path/to/your/images/` 中 44 张图像重新生成 SAM 初始标注
    - 生成完成：44/44 张，0 失败
    - 输出：44 个 `_mask.png` + 44 个 `_vis.jpg` 供人工审核
 
@@ -92,16 +92,16 @@ cd "d:\AI\Aeg for github\polarization-microscope-porosity"
 python gui_main.py
 
 # 单张分析
-python main.py -i "d:/AI/Test/N1-1-(-)10X.jpg" -o results/
+python main.py -i "./path/to/your/images/N1-1-(-)10X.jpg" -o results/
 
 # 批量分析
-python main.py -i "d:/AI/Test/" -o results/ --batch
+python main.py -i "./path/to/your/images/" -o results/ --batch
 
 # 分水岭方法
-python main.py -i "d:/AI/Test/N1-1-(-)10X.jpg" --watershed
+python main.py -i "./path/to/your/images/N1-1-(-)10X.jpg" --watershed
 ```
 
 ### 数据目录
 
-- 原始图像：`d:/AI/Test/`（80 张）
+- 原始图像：`./path/to/your/images/`（80 张）
 - 标注 mask：`data/labels/`（127 个，质量待确认）

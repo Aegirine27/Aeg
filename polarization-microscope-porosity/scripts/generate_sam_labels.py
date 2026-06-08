@@ -5,7 +5,7 @@
 生成的 mask 保存到指定目录，供后续人工审核修正。
 
 使用方法:
-    python scripts/generate_sam_labels.py --input D:/AI/Test/ --output data/labels/
+    python scripts/generate_sam_labels.py --input ./path/to/your/images/ --output data/labels/
 """
 import argparse
 import sys

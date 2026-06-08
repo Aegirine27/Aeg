@@ -190,7 +190,7 @@ def main():
     parser = argparse.ArgumentParser(description='批量交互式修正 SAM 标注')
     parser.add_argument('--names', '-n', nargs='+', default=None,
                         help='指定要修正的图像名（不含扩展名），默认修正全部问题图像')
-    parser.add_argument('--img-dir', '-i', default='d:/AI/Test',
+    parser.add_argument('--img-dir', '-i', required=True,
                         help='图像目录')
     parser.add_argument('--label-dir', '-o', default='data/labels',
                         help='标注输出目录')

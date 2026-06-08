@@ -240,7 +240,7 @@ def main():
     import argparse
     parser = argparse.ArgumentParser(description='分析SAM标注质量')
     parser.add_argument('--labels', '-l', default='data/labels', help='标注目录')
-    parser.add_argument('--images', '-i', default='d:/AI/Test', help='原始图像目录')
+    parser.add_argument('--images', '-i', required=True, help='原始图像目录')
     parser.add_argument('--config', '-c', default='config.yaml', help='配置文件')
     args = parser.parse_args()
 

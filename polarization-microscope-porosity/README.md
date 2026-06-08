@@ -118,13 +118,13 @@ analyzer.save_results(result, 'output/')
 ```bash
 # 使用SAM生成高质量初始标注
 python scripts/generate_sam_labels.py \
-    --input D:/AI/Test/ \
+    --input ./path/to/your/images/ \
     --output data/labels/ \
     --model models/sam_vit_b_01ec64.pth
 
 # 如果SAM未安装，使用阈值法生成弱标签（--fallback）
 python scripts/generate_sam_labels.py \
-    --input D:/AI/Test/ \
+    --input ./path/to/your/images/ \
     --output data/labels/ \
     --fallback
 ```
