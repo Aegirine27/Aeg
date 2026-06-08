@@ -380,15 +380,17 @@ class PorosityGUI:
             lower = cfg['lower']
             upper = cfg['upper']
 
-            self.h_range.set(lower[0], upper[0])
-            self.s_range.set(lower[1], upper[1])
-            self.v_range.set(lower[2], upper[2])
+            # 批量静默设置，避免级联触发 _on_param_changed
+            self.h_range.set(lower[0], upper[0], suppress_callback=True)
+            self.s_range.set(lower[1], upper[1], suppress_callback=True)
+            self.v_range.set(lower[2], upper[2], suppress_callback=True)
 
             self.status_bar.set_status(
                 f"已应用预设 [{preset}]: H{lower[0]}-{upper[0]} S{lower[1]}-{upper[1]} V{lower[2]}-{upper[2]}",
                 COLORS['success']
             )
-            # RangeSlider.set() 已触发 _on_param_changed()，200ms 后自动预览
+            # 手动触发一次预览
+            self._on_param_changed()
 
     def _build_color_pick_panel(self, parent):
         """构建取色校正面板（简化版：点击即应用，无容差设置）"""
@@ -757,9 +759,9 @@ class PorosityGUI:
             s_min, s_max = min(s_vals), max(s_vals)
             v_min, v_max = min(v_vals), max(v_vals)
 
-            self.h_range.set(max(0, h_min - H_WINDOW), min(180, h_max + H_WINDOW))
-            self.s_range.set(max(0, s_min - S_WINDOW), min(255, s_max + S_WINDOW))
-            self.v_range.set(max(0, v_min - V_WINDOW), min(255, v_max + V_WINDOW))
+            self.h_range.set(max(0, h_min - H_WINDOW), min(180, h_max + H_WINDOW), suppress_callback=True)
+            self.s_range.set(max(0, s_min - S_WINDOW), min(255, s_max + S_WINDOW), suppress_callback=True)
+            self.v_range.set(max(0, v_min - V_WINDOW), min(255, v_max + V_WINDOW), suppress_callback=True)
 
             self.status_bar.set_status(
                 f"已撤销取样: H={removed[0]} S={removed[1]} V={removed[2]}，剩余{count}个",
@@ -771,17 +773,17 @@ class PorosityGUI:
             lower = default_config.get('threshold_segmentation', {}).get('hsv_range', {}).get('lower', [100, 50, 50])
             upper = default_config.get('threshold_segmentation', {}).get('hsv_range', {}).get('upper', [140, 255, 255])
 
-            self.h_range.set(lower[0], upper[0])
-            self.s_range.set(lower[1], upper[1])
-            self.v_range.set(lower[2], upper[2])
+            self.h_range.set(lower[0], upper[0], suppress_callback=True)
+            self.s_range.set(lower[1], upper[1], suppress_callback=True)
+            self.v_range.set(lower[2], upper[2], suppress_callback=True)
 
             self.status_bar.set_status(
                 f"已撤销最后一个取样，阈值已重置为默认值",
                 COLORS['text_secondary']
             )
 
-        # 自动预览更新
-        self._preview_threshold()
+        # 手动触发一次预览（防抖500ms）
+        self._on_param_changed()
 
     def _clear_samples(self):
         """清空所有取样"""
@@ -1261,13 +1263,15 @@ class PorosityGUI:
         upper = default_config.get('threshold_segmentation', {}).get('hsv_range', {}).get('upper', [140, 255, 255])
         min_area = default_config.get('area_calculation', {}).get('min_pore_area', 50)
 
-        self.h_range.set(lower[0], upper[0])
-        self.s_range.set(lower[1], upper[1])
-        self.v_range.set(lower[2], upper[2])
-        self.min_area_slider.set(min_area)
+        self.h_range.set(lower[0], upper[0], suppress_callback=True)
+        self.s_range.set(lower[1], upper[1], suppress_callback=True)
+        self.v_range.set(lower[2], upper[2], suppress_callback=True)
+        self.min_area_slider.set(min_area, suppress_callback=True)
 
         self.config = default_config
         self._clear_samples()
+        # 手动触发一次预览
+        self._on_param_changed()
         messagebox.showinfo("提示", "参数已重置为默认值！")
 
     def _save_results(self):
@@ -1322,7 +1326,6 @@ class PorosityGUI:
 
     def _on_param_changed(self):
         """参数改变时实时预览（防抖）"""
-        log(f"_on_param_changed 被调用, original_image={self.original_image is not None}")
         if self.original_image is None:
             self.status_bar.set_status("请先选择图像", COLORS['warning'])
             return
@@ -1334,9 +1337,8 @@ class PorosityGUI:
             except:
                 pass
 
-        # 延迟200ms后预览，避免滑动时频繁计算
-        self._preview_after_id = self.root.after(200, self._preview_threshold)
-        log("已设置200ms后预览")
+        # 延迟500ms后预览（大图处理慢，200ms不够）
+        self._preview_after_id = self.root.after(500, self._preview_threshold)
 
     def _update_single_result(self):
         """更新单张分析结果到 UI"""

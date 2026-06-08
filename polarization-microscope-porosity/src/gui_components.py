@@ -808,10 +808,22 @@ class ParameterSlider(tk.Frame):
         """获取当前值"""
         return self.slider.get()
 
-    def set(self, value):
-        """设置值"""
+    def set(self, value, suppress_callback=False):
+        """设置值
+
+        Args:
+            value: 新值
+            suppress_callback: True时禁止触发command回调（用于批量设置）
+        """
+        orig_command = self.slider.cget('command')
+        if suppress_callback:
+            self.slider.config(command='')
         self.slider.set(value)
+        self.slider.config(command=orig_command)
         self.value_label.config(text=str(value))
+        # 静默模式下仍更新command绑定的变量
+        if suppress_callback and self.command:
+            self.command(value)
 
 
 class RangeSlider(tk.Canvas):
@@ -957,15 +969,21 @@ class RangeSlider(tk.Canvas):
         """获取当前范围 (下限, 上限)"""
         return (self.lower_value, self.upper_value)
 
-    def set(self, lower, upper):
-        """设置范围"""
+    def set(self, lower, upper, suppress_callback=False):
+        """设置范围
+
+        Args:
+            lower: 下限值
+            upper: 上限值
+            suppress_callback: True时禁止触发command回调（用于批量设置）
+        """
         self.lower_value = max(self.from_, min(lower, self.to))
         self.upper_value = max(self.from_, min(upper, self.to))
         # 确保下限 <= 上限
         if self.lower_value > self.upper_value:
             self.lower_value, self.upper_value = self.upper_value, self.lower_value
         self._draw()
-        if self.command:
+        if self.command and not suppress_callback:
             self.command(self.lower_value, self.upper_value)
 
 
